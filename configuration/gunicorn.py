@@ -130,14 +130,16 @@ def on_starting(server):
             "the documentation for further instructions: "
             "DATABASE_CONFIGURATION_INVALID"
         )
-        await _service_registry_client.stop()
+        asyncio.run(_service_registry_client.stop())
         sys.exit(1)
     logging.info("Checking the connection to the database")
     _database_configuration.dsn.port = (
         5432 if _database_configuration.dsn.port is None else int(_database_configuration.dsn.port)
     )
-    _database_available = await tools.is_host_available(
-        host=_database_configuration.dsn.host, port=_database_configuration.dsn.port, timeout=10
+    _database_available = asyncio.run(
+        tools.is_host_available(
+            host=_database_configuration.dsn.host, port=_database_configuration.dsn.port, timeout=10
+        )
     )
     if not _database_available:
         logging.critical(
