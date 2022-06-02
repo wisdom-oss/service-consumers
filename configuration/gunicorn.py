@@ -64,8 +64,8 @@ def on_starting(server):
         renewal_interval_in_secs=5,
         duration_in_secs=30,
     )
-    asyncio.run(_service_registry_client.start())
-    asyncio.run(_service_registry_client.status_update("STARTING"))
+    _service_registry_client.start()
+    _service_registry_client.status_update("STARTING")
     # %% Validate the AMQP configuration and message broker reachability
     try:
         _amqp_configuration = configuration.AMQPConfiguration()
@@ -75,7 +75,7 @@ def on_starting(server):
             "the documentation for further instructions: "
             "AMQP_CONFIGURATION_INVALID"
         )
-        asyncio.run(_service_registry_client.stop())
+        _service_registry_client.stop()
         sys.exit(2)
     _amqp_configuration.dsn.port = 5672 if _amqp_configuration.dsn.port is None else int(_amqp_configuration.dsn.port)
     _message_broker_reachable = asyncio.run(
@@ -86,7 +86,7 @@ def on_starting(server):
             f"The message broker is currently not reachable on {_amqp_configuration.dsn.host}:"
             f"{_amqp_configuration.dsn.port}"
         )
-        asyncio.run(_service_registry_client.stop())
+        _service_registry_client.stop()
         sys.exit(2)
     # %% Check if the configured service scope is available
     # Create an amqp client
@@ -116,7 +116,7 @@ def on_starting(server):
             logging.critical(
                 "Unable to create the scope which shall be used by the service:\n%s", _scope_create_response
             )
-            asyncio.run(_service_registry_client.stop())
+            _service_registry_client.stop()
             sys.exit(3)
         logging.info("Successfully created the scope that shall be used by this service")
     # Set the value for the used security scope internally
@@ -130,7 +130,7 @@ def on_starting(server):
             "the documentation for further instructions: "
             "DATABASE_CONFIGURATION_INVALID"
         )
-        asyncio.run(_service_registry_client.stop())
+        _service_registry_client.stop()
         sys.exit(1)
     logging.info("Checking the connection to the database")
     _database_configuration.dsn.port = (
@@ -146,13 +146,13 @@ def on_starting(server):
             "The database is not available. Since this service requires an access to the database the service will "
             "not start"
         )
-        asyncio.run(_service_registry_client.stop())
+        _service_registry_client.stop()
         sys.exit(2)
 
 
 def when_ready(server):
-    asyncio.run(_service_registry_client.status_update("UP"))
+    _service_registry_client.status_update("UP")
 
 
 def on_exit(server):
-    asyncio.run(_service_registry_client.stop())
+    _service_registry_client.stop()
