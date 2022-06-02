@@ -78,8 +78,8 @@ def on_starting(server):
         asyncio.run(_service_registry_client.stop())
         sys.exit(2)
     _amqp_configuration.dsn.port = 5672 if _amqp_configuration.dsn.port is None else int(_amqp_configuration.dsn.port)
-    _message_broker_reachable = await tools.is_host_available(
-        _amqp_configuration.dsn.host, _amqp_configuration.dsn.port
+    _message_broker_reachable = asyncio.run(
+        tools.is_host_available(_amqp_configuration.dsn.host, _amqp_configuration.dsn.port)
     )
     if not _message_broker_reachable:
         logging.error(
