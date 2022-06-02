@@ -27,7 +27,7 @@ timeout = 0
 _service_registry_client: typing.Optional[py_eureka_client.eureka_client.EurekaClient] = None
 
 
-def on_starting(server):
+async def on_starting(server):
     _service_configuration = configuration.ServiceConfiguration()
     logging.basicConfig(
         format="[%(asctime)s] [%(process)d] [%(levelname)s] %(message)s", datefmt="%Y-%m-%d %H:%M:%S %z"
@@ -43,10 +43,8 @@ def on_starting(server):
         )
         sys.exit(1)
     logging.info("Checking the connection to the service registry")
-    _registry_available = asyncio.run(
-        tools.is_host_available(
-            host=_service_registry_configuration.host, port=_service_registry_configuration.port, timeout=10
-        )
+    _registry_available = await tools.is_host_available(
+        host=_service_registry_configuration.host, port=_service_registry_configuration.port, timeout=10
     )
     if not _registry_available:
         logging.critical(
@@ -65,8 +63,8 @@ def on_starting(server):
         renewal_interval_in_secs=5,
         duration_in_secs=30,
     )
-    asyncio.run(_service_registry_client.start())
-    asyncio.run(_service_registry_client.status_update("STARTING"))
+    await _service_registry_client.start()
+    await _service_registry_client.status_update("STARTING")
     # %% Validate the AMQP configuration and message broker reachability
     try:
         _amqp_configuration = configuration.AMQPConfiguration()
@@ -76,16 +74,18 @@ def on_starting(server):
             "the documentation for further instructions: "
             "AMQP_CONFIGURATION_INVALID"
         )
-        sys.exit(1)
+        await _service_registry_client.stop()
+        sys.exit(2)
     _amqp_configuration.dsn.port = 5672 if _amqp_configuration.dsn.port is None else int(_amqp_configuration.dsn.port)
-    _message_broker_reachable = asyncio.run(
-        tools.is_host_available(_amqp_configuration.dsn.host, _amqp_configuration.dsn.port)
+    _message_broker_reachable = await tools.is_host_available(
+        _amqp_configuration.dsn.host, _amqp_configuration.dsn.port
     )
     if not _message_broker_reachable:
         logging.error(
             f"The message broker is currently not reachable on {_amqp_configuration.dsn.host}:"
             f"{_amqp_configuration.dsn.port}"
         )
+        await _service_registry_client.stop()
         sys.exit(2)
     # %% Check if the configured service scope is available
     # Create an amqp client
@@ -115,6 +115,7 @@ def on_starting(server):
             logging.critical(
                 "Unable to create the scope which shall be used by the service:\n%s", _scope_create_response
             )
+            await _service_registry_client.stop()
             sys.exit(3)
         logging.info("Successfully created the scope that shall be used by this service")
     # Set the value for the used security scope internally
@@ -128,15 +129,14 @@ def on_starting(server):
             "the documentation for further instructions: "
             "DATABASE_CONFIGURATION_INVALID"
         )
+        await _service_registry_client.stop()
         sys.exit(1)
     logging.info("Checking the connection to the database")
     _database_configuration.dsn.port = (
         5432 if _database_configuration.dsn.port is None else int(_database_configuration.dsn.port)
     )
-    _database_available = asyncio.run(
-        tools.is_host_available(
-            host=_database_configuration.dsn.host, port=_database_configuration.dsn.port, timeout=10
-        )
+    _database_available = await tools.is_host_available(
+        host=_database_configuration.dsn.host, port=_database_configuration.dsn.port, timeout=10
     )
     if not _database_available:
         logging.critical(
@@ -146,9 +146,9 @@ def on_starting(server):
         sys.exit(2)
 
 
-def when_ready(server):
-    asyncio.run(_service_registry_client.status_update("UP"))
+async def when_ready(server):
+    await _service_registry_client.status_update("UP")
 
 
-def on_exit(server):
-    asyncio.run(_service_registry_client.stop())
+async def on_exit(server):
+    await _service_registry_client.stop()
