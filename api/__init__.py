@@ -123,9 +123,17 @@ def get_all_consumers(
                     sqlalchemy.select([database.tables.usages.c.consumer], database.tables.usages.c.value > usage_above)
                 ),
                 database.tables.consumers.c.id.in_(consumer_ids),
-                geoalchemy2.functions.ST_Contains(
-                    sqlalchemy.select([database.tables.shapes.c.geom], database.tables.shapes.c.key.in_(in_area)),
-                    database.tables.consumers.c.location,
+                sqlalchemy.or_(
+                    *[
+                        geoalchemy2.functions.ST_Contains(
+                            sqlalchemy.select(
+                                [database.tables.shapes.c.geom],
+                                database.tables.shapes.c.key == k,
+                            ),
+                            database.tables.consumers.c.location,
+                        )
+                        for k in in_area
+                    ],
                 ),
             )
         case (True, True, False):
@@ -140,17 +148,33 @@ def get_all_consumers(
                 database.tables.consumers.c.id.in_(
                     sqlalchemy.select([database.tables.usages.c.consumer], database.tables.usages.c.value > usage_above)
                 ),
-                geoalchemy2.functions.ST_Contains(
-                    sqlalchemy.select([database.tables.shapes.c.geom], database.tables.shapes.c.key.in_(in_area)),
-                    database.tables.consumers.c.location,
+                sqlalchemy.or_(
+                    *[
+                        geoalchemy2.functions.ST_Contains(
+                            sqlalchemy.select(
+                                [database.tables.shapes.c.geom],
+                                database.tables.shapes.c.key == k,
+                            ),
+                            database.tables.consumers.c.location,
+                        )
+                        for k in in_area
+                    ],
                 ),
             )
         case (False, True, True):
             query_filter = sqlalchemy.and_(
                 database.tables.consumers.c.id.in_(consumer_ids),
-                geoalchemy2.functions.ST_Contains(
-                    sqlalchemy.select([database.tables.shapes.c.geom], database.tables.shapes.c.key.in_(in_area)),
-                    database.tables.consumers.c.location,
+                sqlalchemy.or_(
+                    *[
+                        geoalchemy2.functions.ST_Contains(
+                            sqlalchemy.select(
+                                [database.tables.shapes.c.geom],
+                                database.tables.shapes.c.key == k,
+                            ),
+                            database.tables.consumers.c.location,
+                        )
+                        for k in in_area
+                    ],
                 ),
             )
         case (True, False, False):
@@ -160,9 +184,17 @@ def get_all_consumers(
         case (False, True, False):
             query_filter = database.tables.consumers.c.id.in_(consumer_ids)
         case (False, False, True):
-            query_filter = geoalchemy2.functions.ST_Contains(
-                sqlalchemy.select([database.tables.shapes.c.geom], database.tables.shapes.c.key.in_(in_area)),
-                database.tables.consumers.c.location,
+            query_filter = sqlalchemy.or_(
+                *[
+                    geoalchemy2.functions.ST_Contains(
+                        sqlalchemy.select(
+                            [database.tables.shapes.c.geom],
+                            database.tables.shapes.c.key == k,
+                        ),
+                        database.tables.consumers.c.location,
+                    )
+                    for k in in_area
+                ],
             )
         case (False, False, False):
             query_filter = None
