@@ -56,7 +56,7 @@ def is_authorized_user(
     introspection_request = models.amqp.TokenIntrospectionRequest(bearer_token=access_token, scope=scopes.scope_str)
     # Send the request and wait a max amount of 10 seconds until the response needs to be returned
     introspection_id = __amqp_client.send(
-        introspection_request.json(by_alias=True), _amqp_settings.authorization_exchange
+        introspection_request.json(by_alias=True), _amqp_settings.authorization_exchange, "authorization-service"
     )
     introspection_response_bytes = __amqp_client.await_response(introspection_id, 10)
     if introspection_response_bytes is None:
@@ -64,7 +64,7 @@ def is_authorized_user(
             error_code="TOKEN_VALIDATION_TIMEOUT",
             error_title="Token Validation Timeout",
             error_description="The service could not validate the used access token in a timely manner",
-            http_status=http.HTTPStatus.REQUEST_TIMEOUT,
+            http_status=http.HTTPStatus.BAD_GATEWAY,
         )
     # Try to read the response
     token = models.internal.TokenIntrospection.parse_raw(introspection_response_bytes)
