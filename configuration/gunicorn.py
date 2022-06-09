@@ -5,9 +5,9 @@ import sys
 import typing
 
 import amqp_rpc_client
+import orjson
 import py_eureka_client.eureka_client
 import pydantic
-import ujson as ujson
 
 import configuration
 import models.amqp
@@ -98,7 +98,7 @@ def on_starting(server):
         _scope_check_request.json(by_alias=True), _amqp_configuration.authorization_exchange, "authorization-service"
     )
     _scope_check_response_bytes = _amqp_client.await_response(_scope_check_request_id)
-    _scope_check_response: dict = ujson.loads(_scope_check_response_bytes)
+    _scope_check_response: dict = orjson.loads(_scope_check_response_bytes)
     # Check if the scope check response contains any of the known error keys
     if set(_scope_check_response.keys()).issubset({"httpCode", "httpError", "error", "errorName", "errorDescription"}):
         # Since the scope check response contains an error request the scope to be created
@@ -109,7 +109,7 @@ def on_starting(server):
             _scope_create_request.json(), _amqp_configuration.authorization_exchange, "authorization-service"
         )
         _scope_create_response_bytes = _amqp_client.await_response(_scope_create_request_id)
-        _scope_create_response: dict = ujson.loads(_scope_create_response_bytes)
+        _scope_create_response: dict = orjson.loads(_scope_create_response_bytes)
         if set(_scope_create_response.keys()).issubset(
             {"httpCode", "httpError", "error", "errorName", "errorDescription"}
         ):
