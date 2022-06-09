@@ -149,3 +149,23 @@ class DatabaseConfiguration(pydantic.BaseSettings):
 
     class Config:
         env_file = ".env"
+
+
+class RedisConfiguration(pydantic.BaseSettings):
+    dsn: pydantic.RedisDsn = pydantic.Field(default=None, alias="CONFIG_REDIS_DSN", env="CONFIG_REDIS_DSN")
+    """
+    Redis DSN
+
+    The data source name (expressed as URI) pointing to the installation of an redis database
+    """
+
+    use_redis: bool = pydantic.Field(default=False, alias="CONFIG_USE_REDIS", env="CONFIG_USE_REDIS")
+    """
+    Use Redis for late responses
+
+    Allow the service to receive answers which have exceeded the maximum wait time for the prognosis to be returned
+    by the calculating service.
+    """
+
+    class Config:
+        env_file = ".env"
