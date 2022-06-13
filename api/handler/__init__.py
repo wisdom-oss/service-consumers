@@ -19,7 +19,7 @@ async def handle_api_error(_: fastapi.requests.Request, exception: exceptions.AP
     for key, value in content.items():
         if value is None:
             content.pop(key)
-    return fastapi.responses.UJSONResponse(status_code=exception.http_status.value, content=content)
+    return fastapi.responses.ORJSONResponse(status_code=exception.http_status.value, content=content)
 
 
 async def handle_integrity_error(_: fastapi.requests.Request, _exception: sqlalchemy.exc.IntegrityError):
@@ -30,7 +30,7 @@ async def handle_integrity_error(_: fastapi.requests.Request, _exception: sqlalc
         "errorName": "Constraint Violation",
         "errorDescription": "The resource you are trying to create already exists",
     }
-    return fastapi.responses.UJSONResponse(content=content, status_code=http.HTTPStatus.CONFLICT)
+    return fastapi.responses.ORJSONResponse(content=content, status_code=http.HTTPStatus.CONFLICT)
 
 
 def handle_request_validation_error(_: fastapi.requests.Request, _exception: fastapi.exceptions.RequestValidationError):
@@ -41,4 +41,4 @@ def handle_request_validation_error(_: fastapi.requests.Request, _exception: fas
         "errorName": "Bad Request Parameters",
         "errorDescription": "The request did not contain all necessary parameters to be executed successfully",
     }
-    return fastapi.responses.UJSONResponse(content=content, status_code=http.HTTPStatus.BAD_REQUEST)
+    return fastapi.responses.ORJSONResponse(content=content, status_code=http.HTTPStatus.BAD_REQUEST)
