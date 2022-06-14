@@ -1,6 +1,6 @@
 fastapi~=0.78.0
 pydantic~=1.9.1
-amqp-rpc-client~=1.2.6a1
+amqp-rpc-client~=1.2.6a2
 py-eureka-client==0.11.3
 SQLAlchemy==1.4.37
 GeoAlchemy2~=0.11.1
