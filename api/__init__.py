@@ -26,7 +26,6 @@ import tools
 from api import security
 
 # %% Global Clients
-_amqp_client: typing.Optional[amqp_rpc_client.Client] = None
 _redis_client: typing.Union[None, redis.Redis] = None
 
 # %% API Setup

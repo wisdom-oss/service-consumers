@@ -148,6 +148,7 @@ def on_starting(server):
         )
         asyncio.run(_service_registry_client.stop())
         sys.exit(2)
+    _amqp_client.stop()
 
 
 def when_ready(server):
