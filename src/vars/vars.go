@@ -24,4 +24,28 @@ var (
 	ScopeConfigFilePath string
 	// The scope the service was configured with
 	Scope *structs.ScopeInformation
+	/*
+		PostgresHost
+
+		The host on which the consumer database is running on
+	*/
+	PostgresHost string
+	/*
+		PostgresUser
+
+		The user used to access the postgres database
+	*/
+	PostgresUser string
+	/*
+		PostgresPassword
+
+		The password of the user used to access the postgres database
+	*/
+	PostgresPassword string
+	/*
+		PostgresPort
+
+		The port on which the postgres database listens on for new connections. Default value: 5432
+	*/
+	PostgresPort string
 )
