@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 
+	_ "github.com/lib/pq"
 	log "github.com/sirupsen/logrus"
 	"microservice/gateway"
 	"microservice/helpers"
@@ -93,8 +94,8 @@ func init() {
 	vars.HttpListenPort, httpListenPortSet = os.LookupEnv("CONFIG_HTTP_LISTEN_PORT")
 	vars.PostgresHost, postgresHostSet = os.LookupEnv("CONFIG_POSTGRES_HOST")
 	vars.PostgresUser, postgresUserSet = os.LookupEnv("CONFIG_POSTGRES_USER")
-	vars.PostgresPassword, postgresPasswordSet = os.LookupEnv("CONFIG_API_GATEWAY_SERVICE_PATH")
-	vars.PostgresPort, postgresPortSet = os.LookupEnv("CONFIG_API_GATEWAY_SERVICE_PATH")
+	vars.PostgresPassword, postgresPasswordSet = os.LookupEnv("CONFIG_POSTGRES_PASSWORD")
+	vars.PostgresPort, postgresPortSet = os.LookupEnv("CONFIG_POSTGRES_PORT")
 	// Now check the results of the environment variable lookup and check if the string did not only contain whitespaces
 	if !apiGatewayHostSet || strings.TrimSpace(vars.ApiGatewayHost) == "" {
 		logger.Fatal("The required environment variable 'CONFIG_API_GATEWAY_HOST' is not populated.")
@@ -124,11 +125,11 @@ func init() {
 		vars.HttpListenPort = "8000"
 	}
 	if !postgresPortSet {
-		vars.HttpListenPort = "5432"
+		vars.PostgresPort = "5432"
 	}
 	if _, err := strconv.Atoi(vars.PostgresPort); err != nil {
 		logger.Warning("The postgres port which has been set is not a number. Defaulting to 5432")
-		vars.HttpListenPort = "5432"
+		vars.PostgresPort = "5432"
 	}
 	vars.ScopeConfigFilePath, scopeConfigFilePathSet = os.LookupEnv("CONFIG_SCOPE_FILE_PATH")
 	if !scopeConfigFilePathSet {
