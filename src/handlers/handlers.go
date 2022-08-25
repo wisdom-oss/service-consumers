@@ -429,5 +429,18 @@ func UpdateConsumerInformation(w http.ResponseWriter, r *http.Request) {
 }
 
 func DeleteConsumerFromDatabase(w http.ResponseWriter, r *http.Request) {
-	// TODO: Implement code logic
+	logger := log.WithFields(log.Fields{
+		"middleware": false,
+		"action":     "UpdateConsumerInformation",
+	})
+	pathVars := mux.Vars(r)
+	consumerId := pathVars["consumer_id"]
+	deleteQuery := `DELETE FROM water_usage.consumers WHERE id=$1`
+	_, queryError := vars.PostgresConnection.Query(deleteQuery, consumerId)
+	if queryError != nil {
+		logger.WithError(queryError).Error("An error occurred while deleting the consumer")
+		helpers.SendRequestError(e.DatabaseQueryError, w)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
