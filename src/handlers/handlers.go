@@ -81,14 +81,7 @@ func RequestHandler(w http.ResponseWriter, r *http.Request) {
 		deleteConsumerFromDatabase(w, r)
 		break
 	default:
-		requestError := errors.NewRequestError(errors.UnsupportedHTTPMethod)
-		w.Header().Set("Content-Type", "text/json")
-		w.WriteHeader(requestError.HttpStatus)
-		encodingError := json.NewEncoder(w).Encode(requestError)
-		if encodingError != nil {
-			logger.WithError(encodingError).Error("Unable to encode the request error into json")
-			return
-		}
+		helpers.SendRequestError(errors.UnsupportedHTTPMethod, w)
 		break
 	}
 }
