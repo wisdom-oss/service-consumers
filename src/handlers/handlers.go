@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/gorilla/mux"
 	"github.com/lib/pq"
 	geojson "github.com/paulmach/go.geojson"
 	log "github.com/sirupsen/logrus"
@@ -337,7 +338,94 @@ func CreateNewConsumer(w http.ResponseWriter, r *http.Request) {
 }
 
 func UpdateConsumerInformation(w http.ResponseWriter, r *http.Request) {
-	// TODO: Implement code logic
+	logger := log.WithFields(log.Fields{
+		"middleware": false,
+		"action":     "UpdateConsumerInformation",
+	})
+	pathVars := mux.Vars(r)
+	consumerId := pathVars["consumer_id"]
+	var newConsumerData structs.IncomingConsumerData
+	parsingError := json.NewDecoder(r.Body).Decode(&newConsumerData)
+	if parsingError != nil {
+		logger.WithError(parsingError).Warning("Detected unreadable json in request")
+		helpers.SendRequestError(e.UnprocessableEntity, w)
+		return
+	}
+	// Check which attributes shall be updated
+	updateName := r.URL.Query().Has("update") && helpers.StringArrayContains(r.URL.Query()["update"], "name")
+	updateLocation := r.URL.Query().Has("update") && helpers.StringArrayContains(r.URL.Query()["update"], "coordinates")
+	switch {
+	case updateName && updateLocation:
+		updateQuery := `UPDATE water_usage.consumers SET name = $1, location=st_makepoint($2, $3) WHERE id = $4`
+		_, queryError := vars.PostgresConnection.Query(updateQuery, newConsumerData.Name, newConsumerData.Latitude,
+			newConsumerData.Longitude, consumerId)
+		if queryError != nil {
+			logger.WithError(queryError).Error("An error occurred while updating the consumer")
+			helpers.SendRequestError(e.DatabaseQueryError, w)
+			return
+		}
+		break
+	case updateName && !updateLocation:
+		updateQuery := `UPDATE water_usage.consumers SET name = $1 WHERE id = $2`
+		_, queryError := vars.PostgresConnection.Query(updateQuery, newConsumerData.Name, consumerId)
+		if queryError != nil {
+			logger.WithError(queryError).Error("An error occurred while updating the consumer")
+			helpers.SendRequestError(e.DatabaseQueryError, w)
+			return
+		}
+		break
+	case !updateName && updateLocation:
+		updateQuery := `UPDATE water_usage.consumers SET location=st_makepoint($1, $2) WHERE id = $3`
+		_, queryError := vars.PostgresConnection.Query(updateQuery, newConsumerData.Latitude,
+			newConsumerData.Longitude, consumerId)
+		if queryError != nil {
+			logger.WithError(queryError).Error("An error occurred while updating the consumer")
+			helpers.SendRequestError(e.DatabaseQueryError, w)
+			return
+		}
+	case !updateName && !updateLocation:
+		w.WriteHeader(http.StatusNotModified)
+		break
+	default:
+		w.WriteHeader(http.StatusNotModified)
+		break
+	}
+	selectQuery := `SELECT id, name, st_asgeojson(location) FROM water_usage.consumers WHERE id = $1`
+	consumerRow, selectError := vars.PostgresConnection.Query(selectQuery, consumerId)
+	if selectError != nil {
+		logger.WithError(selectError).Error("An error occurred while selecting the newly inserted consumer")
+		helpers.SendRequestError(e.DatabaseQueryError, w)
+		return
+	}
+	defer func(consumerRow *sql.Rows) {
+		err := consumerRow.Close()
+		if err != nil {
+			logger.WithError(err).Error("Unable to close the rows from the database")
+			helpers.SendRequestError(e.DatabaseQueryError, w)
+			return
+		}
+	}(consumerRow)
+	var consumerName string
+	var consumerLocation geojson.Geometry
+	for consumerRow.Next() {
+		scanError := consumerRow.Scan(&consumerId, &consumerName, &consumerLocation)
+		if scanError != nil {
+			logger.WithError(scanError).Error("An error occurred while iterating through the result rows of the query.")
+			helpers.SendRequestError(e.DatabaseQueryError, w)
+			return
+		}
+		break
+	}
+	w.Header().Set("Content-Type", "application/json")
+	encodingError := json.NewEncoder(w).Encode(structs.Consumer{
+		UUID:     consumerId,
+		Name:     consumerName,
+		Location: consumerLocation,
+	})
+	if encodingError != nil {
+		logger.WithError(encodingError).Error("An error occurred while returning the response")
+		w.WriteHeader(http.StatusInternalServerError)
+	}
 }
 
 func DeleteConsumerFromDatabase(w http.ResponseWriter, r *http.Request) {
