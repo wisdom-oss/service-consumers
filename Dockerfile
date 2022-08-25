@@ -1,15 +1,12 @@
-FROM python:3.10-slim
-LABEL vendor="WISdoM 2.0 Project Group"
-LABEL maintainer="wisdom@uol.de"
-# Do not change this variable. Use the environment variables in docker compose or while starting to modify this value
-ENV CONFIG_HTTP_PORT=5000
-ENV CONFIG_SERVICE_NAME="consumers"
+FROM golang:alpine AS build-service
+COPY src /tmp/src
+WORKDIR /tmp/src
+RUN mkdir -p /tmp/build
+RUN go mod download
+RUN go build -o /tmp/build/app
 
-WORKDIR /service
-COPY . /service
-RUN python -m pip install -r /service/requirements.txt
-RUN python -m pip install gunicorn
-RUN python -m pip install uvicorn
-RUN ln ./configuration/gunicorn.py gunicorn.config.py
-EXPOSE $CONFIG_HTTP_PORT
-ENTRYPOINT ["gunicorn", "-cgunicorn.config.py", "api:service"]
+FROM alpine:latest
+COPY --from=build-service /tmp/build/app /microservice/app
+COPY res /microservice/res
+ENTRYPOINT ["/microservice/app"]
+HEALTHCHECK --interval=10s CMD /microservice/app -healthcheck
