@@ -3,6 +3,7 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -11,7 +12,7 @@ import (
 	"github.com/lib/pq"
 	geojson "github.com/paulmach/go.geojson"
 	log "github.com/sirupsen/logrus"
-	"microservice/errors"
+	e "microservice/errors"
 	"microservice/helpers"
 	"microservice/structs"
 	"microservice/vars"
@@ -30,7 +31,7 @@ func AuthorizationCheck(nextHandler http.Handler) http.Handler {
 		// Check if the string is empty
 		if strings.TrimSpace(scopes) == "" {
 			logger.Warning("Unauthorized request detected. The required header had no content or was not set")
-			requestError := errors.NewRequestError(errors.UnauthorizedRequest)
+			requestError := e.NewRequestError(e.UnauthorizedRequest)
 			w.Header().Set("Content-Type", "text/json")
 			w.WriteHeader(requestError.HttpStatus)
 			encodingError := json.NewEncoder(w).Encode(requestError)
@@ -43,7 +44,7 @@ func AuthorizationCheck(nextHandler http.Handler) http.Handler {
 		scopeList := strings.Split(scopes, ",")
 		if !helpers.StringArrayContains(scopeList, vars.Scope.ScopeValue) {
 			logger.Error("Request rejected. The user is missing the scope needed for accessing this service")
-			requestError := errors.NewRequestError(errors.MissingScope)
+			requestError := e.NewRequestError(e.MissingScope)
 			w.Header().Set("Content-Type", "text/json")
 			w.WriteHeader(requestError.HttpStatus)
 			encodingError := json.NewEncoder(w).Encode(requestError)
@@ -89,7 +90,7 @@ func RequestHandler(w http.ResponseWriter, r *http.Request) {
 		deleteConsumerFromDatabase(w, r)
 		break
 	default:
-		helpers.SendRequestError(errors.UnsupportedHTTPMethod, w)
+		helpers.SendRequestError(e.UnsupportedHTTPMethod, w)
 		break
 	}
 }
@@ -113,7 +114,7 @@ func validateRequestParameters(w http.ResponseWriter, r *http.Request) {
 		rawUsageAboveValue := r.URL.Query().Get("usage_above")
 		if _, err := strconv.Atoi(rawUsageAboveValue); err != nil {
 			logger.Warning("Found invalid value for 'usage_above' in request. Rejecting the request")
-			helpers.SendRequestError(errors.InvalidQueryParameter, w)
+			helpers.SendRequestError(e.InvalidQueryParameter, w)
 			return
 		}
 	}
@@ -126,7 +127,7 @@ func validateRequestParameters(w http.ResponseWriter, r *http.Request) {
 				"}\\b-[0-9a-fA-F]{12}$", consumerId)
 			if !validUUID {
 				logger.Warning("Found invalid value for 'id' in request. Rejecting the request")
-				helpers.SendRequestError(errors.InvalidQueryParameter, w)
+				helpers.SendRequestError(e.InvalidQueryParameter, w)
 				return
 			}
 		}
@@ -234,7 +235,7 @@ func returnConsumerInformation(w http.ResponseWriter, r *http.Request) {
 	}
 	if queryError != nil {
 		logger.WithError(queryError).Error("An error occurred during the database query")
-		helpers.SendRequestError(errors.DatabaseQueryError, w)
+		helpers.SendRequestError(e.DatabaseQueryError, w)
 		return
 	}
 	var consumers []structs.Consumer
@@ -243,7 +244,7 @@ func returnConsumerInformation(w http.ResponseWriter, r *http.Request) {
 		err := rows.Close()
 		if err != nil {
 			logger.WithError(err).Error("Unable to close the rows from the database")
-			helpers.SendRequestError(errors.DatabaseQueryError, w)
+			helpers.SendRequestError(e.DatabaseQueryError, w)
 			return
 		}
 	}(rows)
@@ -256,7 +257,7 @@ func returnConsumerInformation(w http.ResponseWriter, r *http.Request) {
 		scanError := rows.Scan(&uuid, &name, &location)
 		if scanError != nil {
 			logger.WithError(scanError).Error("An error occurred while iterating through the result rows of the query.")
-			helpers.SendRequestError(errors.DatabaseQueryError, w)
+			helpers.SendRequestError(e.DatabaseQueryError, w)
 			return
 		}
 
@@ -285,7 +286,80 @@ func returnConsumerInformation(w http.ResponseWriter, r *http.Request) {
 Create a new consumer according to the request bodies content
 */
 func createNewConsumer(w http.ResponseWriter, r *http.Request) {
-	// TODO: Implement code logic
+	logger := log.WithFields(log.Fields{
+		"middleware": false,
+		"title":      "createNewConsumer",
+	})
+	// Read the body of the request and parse it into an object
+	var newConsumerData structs.IncomingConsumerData
+	parsingError := json.NewDecoder(r.Body).Decode(&newConsumerData)
+	if parsingError != nil {
+		helpers.SendRequestError(e.UnprocessableEntity, w)
+		return
+	}
+	// Build the insertion query
+	insertionQuery := `INSERT INTO water_usage.consumers VALUES ($1, st_makepoint($2, $3), default) RETURNING id`
+	row := vars.PostgresConnection.QueryRow(insertionQuery, newConsumerData.Name,
+		newConsumerData.Latitude, newConsumerData.Longitude)
+	err := row.Err()
+	if err != nil {
+		var dbError *pq.Error
+		errors.As(err, &dbError)
+		println(dbError.Code)
+		if dbError.Code.Name() == "unique_violation" {
+			logger.WithError(dbError).Warning("Unique constraint violation detected while inserting the new consumer.")
+			helpers.SendRequestError(e.UniqueConstraintViolation, w)
+			return
+		} else {
+			logger.WithError(dbError).Error("An error occurred while inserting the new consumer into the database")
+			helpers.SendRequestError(e.DatabaseQueryError, w)
+			return
+		}
+	}
+	var consumerId string
+	err = row.Scan(&consumerId)
+	if err != nil {
+		logger.WithError(err).Error("An error occurred while getting the id of the new consumer")
+		helpers.SendRequestError(e.DatabaseQueryError, w)
+		return
+	}
+	// Build a query to retrieve the just inserted consumer
+	selectQuery := `SELECT id, name, st_asgeojson(location) FROM water_usage.consumers WHERE id = $1`
+	consumerRow, selectError := vars.PostgresConnection.Query(selectQuery, consumerId)
+	if selectError != nil {
+		logger.WithError(selectError).Error("An error occurred while selecting the newly inserted consumer")
+		helpers.SendRequestError(e.DatabaseQueryError, w)
+		return
+	}
+	defer func(consumerRow *sql.Rows) {
+		err := consumerRow.Close()
+		if err != nil {
+			logger.WithError(err).Error("Unable to close the rows from the database")
+			helpers.SendRequestError(e.DatabaseQueryError, w)
+			return
+		}
+	}(consumerRow)
+	var consumerName string
+	var consumerLocation geojson.Geometry
+	for consumerRow.Next() {
+		scanError := consumerRow.Scan(&consumerId, &consumerName, &consumerLocation)
+		if scanError != nil {
+			logger.WithError(scanError).Error("An error occurred while iterating through the result rows of the query.")
+			helpers.SendRequestError(e.DatabaseQueryError, w)
+			return
+		}
+		break
+	}
+	w.Header().Set("Content-Type", "application/json")
+	encodingError := json.NewEncoder(w).Encode(structs.Consumer{
+		UUID:     consumerId,
+		Name:     consumerName,
+		Location: consumerLocation,
+	})
+	if encodingError != nil {
+		logger.WithError(encodingError).Error("An error occurred while returning the response")
+		w.WriteHeader(http.StatusInternalServerError)
+	}
 }
 
 func updateConsumerInformation(w http.ResponseWriter, r *http.Request) {
