@@ -66,10 +66,6 @@ RequestHandler
 TODO: Write your own handler logic into this handler or use this handler as example
 */
 func RequestHandler(w http.ResponseWriter, r *http.Request) {
-	logger := log.WithFields(log.Fields{
-		"middleware": false,
-		"title":      "RequestHandler",
-	})
 	// Check the method of the http request
 	switch r.Method {
 	case http.MethodGet:
