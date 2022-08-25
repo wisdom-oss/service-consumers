@@ -5,8 +5,7 @@ import (
 	"microservice/structs"
 )
 
-// TODO: Change me
-const ServiceName = "change-me"
+const ServiceName = "consumer-management"
 
 var (
 	// The host on which the API gateway runs and this service shall be registered on
