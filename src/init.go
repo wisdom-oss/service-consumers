@@ -3,8 +3,10 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"strconv"
@@ -158,6 +160,24 @@ func init() {
 	} else {
 		logger.Info("The api gateway is reachable via tcp")
 	}
+	// Check if a connection to the postgres database is possible
+	logger.Info("Checking if the postgres database is reachable and the login data is valid")
+	postgresConnectionString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=wisdom sslmode=disable",
+		vars.PostgresHost, vars.PostgresPort, vars.PostgresUser, vars.PostgresPassword)
+	logger.Debugf("Built the follwoing connection string: '%s'", postgresConnectionString)
+	// Create a possible error object
+	var connectionError error
+	logger.Info("Opening the connection to the consumer database")
+	vars.PostgresConnection, connectionError = sql.Open("postgres", postgresConnectionString)
+	if connectionError != nil {
+		logger.WithError(connectionError).Fatal("Unable to connect to the consumer database.")
+	}
+	// Now ping the database to check if the connection is working
+	databasePingError := vars.PostgresConnection.Ping()
+	if databasePingError != nil {
+		logger.WithError(databasePingError).Fatal("Unable to ping to the consumer database.")
+	}
+	logger.Info("The connection to the consumer database was successfully established")
 }
 
 /**
