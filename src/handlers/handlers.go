@@ -69,7 +69,9 @@ func PingHandler(w http.ResponseWriter, r *http.Request) {
 /*
 RequestHandler
 
-TODO: Write your own handler logic into this handler or use this handler as example
+This handler is used to dispatch the requests to the handlers respective to the request method.
+
+Supported request methods are: GET, PATCH, PUT, DELETE
 */
 func RequestHandler(w http.ResponseWriter, r *http.Request) {
 	// Check the method of the http request
@@ -92,6 +94,14 @@ func RequestHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+/*
+validateRequestParameters
+
+This function validates the query parameters:
+	- usage_above: The minimal usage a consumer needs to have recorded once to be returned
+	- id: The id of a consumer by which the consumer shall be searched by
+	- in: The key of a shape sent by the geodata service to limit the search area
+*/
 func validateRequestParameters(w http.ResponseWriter, r *http.Request) {
 	logger := log.WithFields(log.Fields{
 		"middleware": true,
@@ -125,6 +135,11 @@ func validateRequestParameters(w http.ResponseWriter, r *http.Request) {
 	// 	consumers are searched. If none of the area keys match the request will return nothing
 }
 
+/*
+returnConsumerInformation
+
+Return a response with the consumers matching the filters set by the query parameters.
+*/
 func returnConsumerInformation(w http.ResponseWriter, r *http.Request) {
 	logger := log.WithFields(log.Fields{
 		"middleware": false,
@@ -141,6 +156,7 @@ func returnConsumerInformation(w http.ResponseWriter, r *http.Request) {
 	// Prepare objects for the query results
 	var rows *sql.Rows
 	var queryError error
+	// Use a switch function to determine which query needs to be executed and query the database afterwards
 	switch {
 	case usageAboveAvailable && consumerIdsAvailable && areaKeysAvailable:
 		databaseQuery = `SELECT id, name, ST_ASGeoJSON(location) FROM water_usage.consumers
@@ -222,6 +238,7 @@ func returnConsumerInformation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var consumers []structs.Consumer
+	// Close the current open connection to the database
 	defer func(rows *sql.Rows) {
 		err := rows.Close()
 		if err != nil {
@@ -264,6 +281,9 @@ func returnConsumerInformation(w http.ResponseWriter, r *http.Request) {
 
 }
 
+/*
+Create a new consumer according to the request bodies content
+*/
 func createNewConsumer(w http.ResponseWriter, r *http.Request) {
 	// TODO: Implement code logic
 }
