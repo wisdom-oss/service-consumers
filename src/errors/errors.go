@@ -15,12 +15,14 @@ const UnauthorizedRequest = "UNAUTHORIZED_REQUEST"
 const MissingScope = "SCOPE_MISSING"
 const UnsupportedHTTPMethod = "UNSUPPORTED_METHOD"
 const InvalidQueryParameter = "INVALID_QUERY_PARAMETER"
+const DatabaseQueryError = "DATABASE_QUERY_ERROR"
 
 var errorTitle = map[string]string{
 	UnauthorizedRequest:   "Unauthorized Request",
 	MissingScope:          "Forbidden",
 	UnsupportedHTTPMethod: "Unsupported HTTP Method",
 	InvalidQueryParameter: "Invalid Query Parameter",
+	DatabaseQueryError:    "Database Query Error",
 }
 
 var errorDescription = map[string]string{
@@ -31,6 +33,8 @@ var errorDescription = map[string]string{
 		"Please check the documentation for further information",
 	InvalidQueryParameter: "One or more parameters set for the request are not in a valid format. " +
 		"Please check your request and read the API documentation.",
+	DatabaseQueryError: "The microservice was unable to successfully execute the database query. " +
+		"Please check the logs for more information",
 }
 
 var httpStatus = map[string]int{
@@ -38,6 +42,7 @@ var httpStatus = map[string]int{
 	MissingScope:          http.StatusForbidden,
 	UnsupportedHTTPMethod: http.StatusMethodNotAllowed,
 	InvalidQueryParameter: http.StatusBadRequest,
+	DatabaseQueryError:    http.StatusInternalServerError,
 }
 
 func NewRequestError(errorCode string) structs.RequestError {
