@@ -1,7 +1,6 @@
 // Package errors
 // This package contains all errors the service may return in HTTP requests
 // Those errors include unauthenticated calls and forbidden ones
-// TODO: Add custom errors
 package errors
 
 import (
@@ -14,21 +13,26 @@ import (
 
 const UnauthorizedRequest = "UNAUTHORIZED_REQUEST"
 const MissingScope = "SCOPE_MISSING"
+const UnsupportedHTTPMethod = "UNSUPPORTED_METHOD"
 
 var errorTitle = map[string]string{
-	UnauthorizedRequest: "Unauthorized Request",
-	MissingScope:        "Forbidden",
+	UnauthorizedRequest:   "Unauthorized Request",
+	MissingScope:          "Forbidden",
+	UnsupportedHTTPMethod: "Unsupported HTTP Method",
 }
 
 var errorDescription = map[string]string{
 	UnauthorizedRequest: "The resource you tried to access requires authorization. Please check your request",
-	MissingScope: "Ypu tried to access a resource which is protected by a scope. " +
+	MissingScope: "Yu tried to access a resource which is protected by a scope. " +
 		"Your authorization information did not contain the required scope.",
+	UnsupportedHTTPMethod: "The used HTTP method is not supported by this microservice. " +
+		"Please check the documentation for further information",
 }
 
 var httpStatus = map[string]int{
-	UnauthorizedRequest: http.StatusUnauthorized,
-	MissingScope:        http.StatusForbidden,
+	UnauthorizedRequest:   http.StatusUnauthorized,
+	MissingScope:          http.StatusForbidden,
+	UnsupportedHTTPMethod: http.StatusMethodNotAllowed,
 }
 
 func NewRequestError(errorCode string) structs.RequestError {
