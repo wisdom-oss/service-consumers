@@ -66,5 +66,49 @@ RequestHandler
 TODO: Write your own handler logic into this handler or use this handler as example
 */
 func RequestHandler(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Hello World"))
+	logger := log.WithFields(log.Fields{
+		"middleware": false,
+		"title":      "RequestHandler",
+	})
+	// Check the method of the http request
+	switch r.Method {
+	case http.MethodGet:
+		returnConsumerInformation(w, r)
+		break
+	case http.MethodPost:
+		createNewConsumer(w, r)
+		break
+	case http.MethodPatch:
+		updateConsumerInformation(w, r)
+		break
+	case http.MethodDelete:
+		deleteConsumerFromDatabase(w, r)
+		break
+	default:
+		requestError := errors.NewRequestError(errors.UnsupportedHTTPMethod)
+		w.Header().Set("Content-Type", "text/json")
+		w.WriteHeader(requestError.HttpStatus)
+		encodingError := json.NewEncoder(w).Encode(requestError)
+		if encodingError != nil {
+			logger.WithError(encodingError).Error("Unable to encode the request error into json")
+			return
+		}
+		break
+	}
+}
+
+func returnConsumerInformation(w http.ResponseWriter, r *http.Request) {
+	// TODO: Implement code logic
+}
+
+func createNewConsumer(w http.ResponseWriter, r *http.Request) {
+	// TODO: Implement code logic
+}
+
+func updateConsumerInformation(w http.ResponseWriter, r *http.Request) {
+	// TODO: Implement code logic
+}
+
+func deleteConsumerFromDatabase(w http.ResponseWriter, r *http.Request) {
+	// TODO: Implement code logic
 }
