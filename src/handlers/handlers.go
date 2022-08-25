@@ -79,7 +79,7 @@ func RequestHandler(w http.ResponseWriter, r *http.Request) {
 	case http.MethodGet:
 		returnConsumerInformation(w, r)
 		break
-	case http.MethodPost:
+	case http.MethodPut:
 		createNewConsumer(w, r)
 		break
 	case http.MethodPatch:
