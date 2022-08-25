@@ -62,7 +62,7 @@ PingHandler
 
 This handler is used to test if the service is able to ping itself. This is done to run a healthcheck on the container
 */
-func PingHandler(w http.ResponseWriter, r *http.Request) {
+func PingHandler(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
