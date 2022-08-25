@@ -93,6 +93,39 @@ func RequestHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func validateRequestParameters(w http.ResponseWriter, r *http.Request) {
+	logger := log.WithFields(log.Fields{
+		"middleware": true,
+		"title":      "AuthorizationCheck",
+	})
+	// Check if the usage above parameter was set correctly if used
+	usageAboveSet := r.URL.Query().Has("usage_above")
+	if usageAboveSet {
+		rawUsageAboveValue := r.URL.Query().Get("usage_above")
+		if _, err := strconv.Atoi(rawUsageAboveValue); err != nil {
+			logger.Warning("Found invalid value for 'usage_above' in request. Rejecting the request")
+			helpers.SendRequestError(errors.InvalidQueryParameter, w)
+			return
+		}
+	}
+	// Check if the consumer ids have been set correctly
+	consumerIdsSet := r.URL.Query().Has("id")
+	if consumerIdsSet {
+		consumerIds := r.URL.Query()["id"]
+		for _, consumerId := range consumerIds {
+			validUUID, _ := regexp.MatchString("^[0-9a-fA-F]{8}\\b-[0-9a-fA-F]{4}\\b-[0-9a-fA-F]{4}\\b-[0-9a-fA-F]{4"+
+				"}\\b-[0-9a-fA-F]{12}$", consumerId)
+			if !validUUID {
+				logger.Warning("Found invalid value for 'id' in request. Rejecting the request")
+				helpers.SendRequestError(errors.InvalidQueryParameter, w)
+				return
+			}
+		}
+	}
+	// HINT: The area keys do not need to be checked since these are simple strings which limit the areas in which the
+	// 	consumers are searched. If none of the area keys match the request will return nothing
+}
+
 func returnConsumerInformation(w http.ResponseWriter, r *http.Request) {
 	// TODO: Implement code logic
 }
