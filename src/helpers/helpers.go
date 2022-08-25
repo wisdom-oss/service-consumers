@@ -1,12 +1,19 @@
 package helpers
 
 import (
+	"encoding/json"
 	"fmt"
 	"net"
+	"net/http"
 	"time"
 
 	log "github.com/sirupsen/logrus"
+	"microservice/errors"
 )
+
+var logger = log.WithFields(log.Fields{
+	"package": "helpers",
+})
 
 /*
 PingHost
@@ -82,4 +89,20 @@ func StringArrayContainsAnyElement(a []string, b []string) bool {
 		}
 	}
 	return false
+}
+
+/*
+SendRequestError
+
+Send a new request error using the http.ResponseWriter supplied to the function
+*/
+func SendRequestError(errorCode string, w http.ResponseWriter) {
+	requestError := errors.NewRequestError(errorCode)
+	w.Header().Set("Content-Type", "text/json")
+	w.WriteHeader(requestError.HttpStatus)
+	encodingError := json.NewEncoder(w).Encode(requestError)
+	if encodingError != nil {
+		logger.WithError(encodingError).Error("Unable to encode the request error into json")
+		return
+	}
 }

@@ -3,13 +3,16 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
 
+	_ "github.com/lib/pq"
 	log "github.com/sirupsen/logrus"
 	"microservice/gateway"
 	"microservice/helpers"
@@ -83,10 +86,16 @@ func init() {
 	logger.Debug("Validating the required environment variables for their existence and if the variables are not empty")
 	// Use os.LookupEnv to check if the variables are existent in the environment, but ignore their values since
 	// they have already been read once
-	var apiGatewayHostSet, apiGatewayAdminPortSet, apiGatewayServicePathSet, httpListenPortSet, scopeConfigFilePathSet bool
+	var apiGatewayHostSet, apiGatewayAdminPortSet, apiGatewayServicePathSet, httpListenPortSet,
+		scopeConfigFilePathSet, postgresHostSet, postgresUserSet, postgresPasswordSet, postgresPortSet bool
 	vars.ApiGatewayHost, apiGatewayHostSet = os.LookupEnv("CONFIG_API_GATEWAY_HOST")
 	vars.ApiGatewayAdminPort, apiGatewayAdminPortSet = os.LookupEnv("CONFIG_API_GATEWAY_ADMIN_PORT")
 	vars.ApiGatewayServicePath, apiGatewayServicePathSet = os.LookupEnv("CONFIG_API_GATEWAY_SERVICE_PATH")
+	vars.HttpListenPort, httpListenPortSet = os.LookupEnv("CONFIG_HTTP_LISTEN_PORT")
+	vars.PostgresHost, postgresHostSet = os.LookupEnv("CONFIG_POSTGRES_HOST")
+	vars.PostgresUser, postgresUserSet = os.LookupEnv("CONFIG_POSTGRES_USER")
+	vars.PostgresPassword, postgresPasswordSet = os.LookupEnv("CONFIG_POSTGRES_PASSWORD")
+	vars.PostgresPort, postgresPortSet = os.LookupEnv("CONFIG_POSTGRES_PORT")
 	// Now check the results of the environment variable lookup and check if the string did not only contain whitespaces
 	if !apiGatewayHostSet || strings.TrimSpace(vars.ApiGatewayHost) == "" {
 		logger.Fatal("The required environment variable 'CONFIG_API_GATEWAY_HOST' is not populated.")
@@ -97,15 +106,30 @@ func init() {
 	if !apiGatewayServicePathSet || strings.TrimSpace(vars.ApiGatewayServicePath) == "" {
 		logger.Fatal("The required environment variable 'CONFIG_API_GATEWAY_SERVICE_PATH' is not populated.")
 	}
+	if !postgresHostSet || strings.TrimSpace(vars.PostgresHost) == "" {
+		logger.Fatal("The required environment variable 'CONFIG_POSTGRES_HOST' is not populated.")
+	}
+	if !postgresUserSet || strings.TrimSpace(vars.PostgresUser) == "" {
+		logger.Fatal("The required environment variable 'CONFIG_POSTGRES_USER' is not populated.")
+	}
+	if !postgresPasswordSet || strings.TrimSpace(vars.PostgresPassword) == "" {
+		logger.Fatal("The required environment variable 'CONFIG_POSTGRES_PASSWORD' is not populated.")
+	}
 	// Now check if the optional variables have been set. If not set their respective default values
 	// TODO: Add checks for own optional variables, if needed
-	vars.HttpListenPort, httpListenPortSet = os.LookupEnv("CONFIG_HTTP_LISTEN_PORT")
 	if !httpListenPortSet {
 		vars.HttpListenPort = "8000"
 	}
 	if _, err := strconv.Atoi(vars.HttpListenPort); err != nil {
 		logger.Warning("The http listen port which has been set is not a number. Defaulting to 8000")
 		vars.HttpListenPort = "8000"
+	}
+	if !postgresPortSet {
+		vars.PostgresPort = "5432"
+	}
+	if _, err := strconv.Atoi(vars.PostgresPort); err != nil {
+		logger.Warning("The postgres port which has been set is not a number. Defaulting to 5432")
+		vars.PostgresPort = "5432"
 	}
 	vars.ScopeConfigFilePath, scopeConfigFilePathSet = os.LookupEnv("CONFIG_SCOPE_FILE_PATH")
 	if !scopeConfigFilePathSet {
@@ -137,6 +161,24 @@ func init() {
 	} else {
 		logger.Info("The api gateway is reachable via tcp")
 	}
+	// Check if a connection to the postgres database is possible
+	logger.Info("Checking if the postgres database is reachable and the login data is valid")
+	postgresConnectionString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=wisdom sslmode=disable",
+		vars.PostgresHost, vars.PostgresPort, vars.PostgresUser, vars.PostgresPassword)
+	logger.Debugf("Built the follwoing connection string: '%s'", postgresConnectionString)
+	// Create a possible error object
+	var connectionError error
+	logger.Info("Opening the connection to the consumer database")
+	vars.PostgresConnection, connectionError = sql.Open("postgres", postgresConnectionString)
+	if connectionError != nil {
+		logger.WithError(connectionError).Fatal("Unable to connect to the consumer database.")
+	}
+	// Now ping the database to check if the connection is working
+	databasePingError := vars.PostgresConnection.Ping()
+	if databasePingError != nil {
+		logger.WithError(databasePingError).Fatal("Unable to ping to the consumer database.")
+	}
+	logger.Info("The connection to the consumer database was successfully established")
 }
 
 /**
@@ -171,26 +213,28 @@ This initialization step will use the admin api of the api gateway to add itself
 instances. If no upstream is set up, one will be created automatically
 */
 func init() {
-	// Since this is the fist call to the api gateway we need to prepare the calls to the gateway
-	gateway.PrepareGatewayConnections()
-	// Now check if the upstream is already set up
-	if !gateway.IsUpstreamSetUp() {
-		gateway.CreateUpstream()
-	}
-	// Now check if this service instance is listed in the upstreams targets
-	if !gateway.IsIPAddressInUpstreamTargets() {
-		gateway.AddServiceToUpstreamTargets()
-	}
-	// Now check if a service entry exists for this service
-	if !gateway.IsServiceSetUp() {
-		gateway.CreateServiceEntry()
-	}
-	// Now check if the service entry has the upstream already configured as host
-	if !gateway.IsUpstreamSetInServiceEntry() {
-		gateway.SetUpstreamAsServiceEntryHost()
-	}
-	// Now check if the service entry has a route matching the configuration
-	if !gateway.IsRouteConfigured() {
-		gateway.ConfigureRoute()
+	if !vars.ExecuteHealthcheck {
+		// Since this is the fist call to the api gateway we need to prepare the calls to the gateway
+		gateway.PrepareGatewayConnections()
+		// Now check if the upstream is already set up
+		if !gateway.IsUpstreamSetUp() {
+			gateway.CreateUpstream()
+		}
+		// Now check if this service instance is listed in the upstreams targets
+		if !gateway.IsIPAddressInUpstreamTargets() {
+			gateway.AddServiceToUpstreamTargets()
+		}
+		// Now check if a service entry exists for this service
+		if !gateway.IsServiceSetUp() {
+			gateway.CreateServiceEntry()
+		}
+		// Now check if the service entry has the upstream already configured as host
+		if !gateway.IsUpstreamSetInServiceEntry() {
+			gateway.SetUpstreamAsServiceEntryHost()
+		}
+		// Now check if the service entry has a route matching the configuration
+		if !gateway.IsRouteConfigured() {
+			gateway.ConfigureRoute()
+		}
 	}
 }
