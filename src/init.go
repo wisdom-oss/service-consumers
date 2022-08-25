@@ -83,10 +83,16 @@ func init() {
 	logger.Debug("Validating the required environment variables for their existence and if the variables are not empty")
 	// Use os.LookupEnv to check if the variables are existent in the environment, but ignore their values since
 	// they have already been read once
-	var apiGatewayHostSet, apiGatewayAdminPortSet, apiGatewayServicePathSet, httpListenPortSet, scopeConfigFilePathSet bool
+	var apiGatewayHostSet, apiGatewayAdminPortSet, apiGatewayServicePathSet, httpListenPortSet,
+		scopeConfigFilePathSet, postgresHostSet, postgresUserSet, postgresPasswordSet, postgresPortSet bool
 	vars.ApiGatewayHost, apiGatewayHostSet = os.LookupEnv("CONFIG_API_GATEWAY_HOST")
 	vars.ApiGatewayAdminPort, apiGatewayAdminPortSet = os.LookupEnv("CONFIG_API_GATEWAY_ADMIN_PORT")
 	vars.ApiGatewayServicePath, apiGatewayServicePathSet = os.LookupEnv("CONFIG_API_GATEWAY_SERVICE_PATH")
+	vars.HttpListenPort, httpListenPortSet = os.LookupEnv("CONFIG_HTTP_LISTEN_PORT")
+	vars.PostgresHost, postgresHostSet = os.LookupEnv("CONFIG_POSTGRES_HOST")
+	vars.PostgresUser, postgresUserSet = os.LookupEnv("CONFIG_POSTGRES_USER")
+	vars.PostgresPassword, postgresPasswordSet = os.LookupEnv("CONFIG_API_GATEWAY_SERVICE_PATH")
+	vars.PostgresPort, postgresPortSet = os.LookupEnv("CONFIG_API_GATEWAY_SERVICE_PATH")
 	// Now check the results of the environment variable lookup and check if the string did not only contain whitespaces
 	if !apiGatewayHostSet || strings.TrimSpace(vars.ApiGatewayHost) == "" {
 		logger.Fatal("The required environment variable 'CONFIG_API_GATEWAY_HOST' is not populated.")
@@ -97,15 +103,30 @@ func init() {
 	if !apiGatewayServicePathSet || strings.TrimSpace(vars.ApiGatewayServicePath) == "" {
 		logger.Fatal("The required environment variable 'CONFIG_API_GATEWAY_SERVICE_PATH' is not populated.")
 	}
+	if !postgresHostSet || strings.TrimSpace(vars.PostgresHost) == "" {
+		logger.Fatal("The required environment variable 'CONFIG_POSTGRES_HOST' is not populated.")
+	}
+	if !postgresUserSet || strings.TrimSpace(vars.PostgresUser) == "" {
+		logger.Fatal("The required environment variable 'CONFIG_POSTGRES_USER' is not populated.")
+	}
+	if !postgresPasswordSet || strings.TrimSpace(vars.PostgresPassword) == "" {
+		logger.Fatal("The required environment variable 'CONFIG_POSTGRES_PASSWORD' is not populated.")
+	}
 	// Now check if the optional variables have been set. If not set their respective default values
 	// TODO: Add checks for own optional variables, if needed
-	vars.HttpListenPort, httpListenPortSet = os.LookupEnv("CONFIG_HTTP_LISTEN_PORT")
 	if !httpListenPortSet {
 		vars.HttpListenPort = "8000"
 	}
 	if _, err := strconv.Atoi(vars.HttpListenPort); err != nil {
 		logger.Warning("The http listen port which has been set is not a number. Defaulting to 8000")
 		vars.HttpListenPort = "8000"
+	}
+	if !postgresPortSet {
+		vars.HttpListenPort = "5432"
+	}
+	if _, err := strconv.Atoi(vars.PostgresPort); err != nil {
+		logger.Warning("The postgres port which has been set is not a number. Defaulting to 5432")
+		vars.HttpListenPort = "5432"
 	}
 	vars.ScopeConfigFilePath, scopeConfigFilePathSet = os.LookupEnv("CONFIG_SCOPE_FILE_PATH")
 	if !scopeConfigFilePathSet {
