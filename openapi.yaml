@@ -1,0 +1,27 @@
+# TODO: Extend the documentation with the information about your service
+openapi: 3.0.0
+info:
+  title: Microservice Template
+  description: This microservice template is used to allow new developers to start with a new microservice fast
+               The template is written in Golang
+  version: '1.0'
+
+servers:
+  - url: /
+    description: The default API endpoint for the WISdoM demo server
+
+paths:
+  /:
+    get:
+      summary: Get a test message
+      description: Hello World
+      responses:
+        200:
+          description: Hello World
+  /ping:
+    get:
+      summary: Ping the service to test its reachability
+      description: The microservice will respond with a 204 No Content when pinging it
+      responses:
+        '204':
+          description: Response to the ping without any content
