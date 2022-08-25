@@ -2,6 +2,8 @@
 package vars
 
 import (
+	"database/sql"
+
 	"microservice/structs"
 )
 
@@ -48,4 +50,11 @@ var (
 		The port on which the postgres database listens on for new connections. Default value: 5432
 	*/
 	PostgresPort string
+	/*
+		PostgresConnection
+
+		The postgres connection which has been made during the initialization.
+		This connection is shared throughout the microservice
+	*/
+	PostgresConnection *sql.DB
 )
