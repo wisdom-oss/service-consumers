@@ -30,3 +30,14 @@ type Consumer struct {
 	Name     string           `json:"name"`
 	Location geoJson.Geometry `json:"location"`
 }
+
+/*
+IncomingConsumerData
+
+This struct holds the data for creating a new consumer or updating one
+*/
+type IncomingConsumerData struct {
+	Name      string  `json:"name"`
+	Latitude  float64 `json:"lat"`
+	Longitude float64 `json:"long"`
+}
