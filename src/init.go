@@ -213,26 +213,28 @@ This initialization step will use the admin api of the api gateway to add itself
 instances. If no upstream is set up, one will be created automatically
 */
 func init() {
-	// Since this is the fist call to the api gateway we need to prepare the calls to the gateway
-	gateway.PrepareGatewayConnections()
-	// Now check if the upstream is already set up
-	if !gateway.IsUpstreamSetUp() {
-		gateway.CreateUpstream()
-	}
-	// Now check if this service instance is listed in the upstreams targets
-	if !gateway.IsIPAddressInUpstreamTargets() {
-		gateway.AddServiceToUpstreamTargets()
-	}
-	// Now check if a service entry exists for this service
-	if !gateway.IsServiceSetUp() {
-		gateway.CreateServiceEntry()
-	}
-	// Now check if the service entry has the upstream already configured as host
-	if !gateway.IsUpstreamSetInServiceEntry() {
-		gateway.SetUpstreamAsServiceEntryHost()
-	}
-	// Now check if the service entry has a route matching the configuration
-	if !gateway.IsRouteConfigured() {
-		gateway.ConfigureRoute()
+	if !vars.ExecuteHealthcheck {
+		// Since this is the fist call to the api gateway we need to prepare the calls to the gateway
+		gateway.PrepareGatewayConnections()
+		// Now check if the upstream is already set up
+		if !gateway.IsUpstreamSetUp() {
+			gateway.CreateUpstream()
+		}
+		// Now check if this service instance is listed in the upstreams targets
+		if !gateway.IsIPAddressInUpstreamTargets() {
+			gateway.AddServiceToUpstreamTargets()
+		}
+		// Now check if a service entry exists for this service
+		if !gateway.IsServiceSetUp() {
+			gateway.CreateServiceEntry()
+		}
+		// Now check if the service entry has the upstream already configured as host
+		if !gateway.IsUpstreamSetInServiceEntry() {
+			gateway.SetUpstreamAsServiceEntryHost()
+		}
+		// Now check if the service entry has a route matching the configuration
+		if !gateway.IsRouteConfigured() {
+			gateway.ConfigureRoute()
+		}
 	}
 }
