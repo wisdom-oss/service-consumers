@@ -17,6 +17,14 @@ type RequestError struct {
 	ErrorDescription string `json:"errorDescription"`
 }
 
+/*
+Consumer
+
+The consumer holds the following information:
+	- UUID: The internal and external id for the consumer
+	- Name: The name of the consumer
+	- Location: A GeoJSON entity containing the location of the consumer
+*/
 type Consumer struct {
 	UUID     string           `json:"id"`
 	Name     string           `json:"name"`
