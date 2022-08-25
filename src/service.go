@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/gorilla/mux"
 	"microservice/handlers"
 	"microservice/vars"
 )
@@ -23,10 +24,31 @@ func main() {
 		return
 	}
 
-	// Set up the HTTP server
-	http.Handle("/ping", http.HandlerFunc(handlers.PingHandler))
-	// Protect the request handler with authorization
-	http.Handle("/", handlers.AuthorizationCheck(http.HandlerFunc(handlers.RequestHandler)))
-	// Start the http server
-	http.ListenAndServe(":"+vars.HttpListenPort, nil)
+	// Set up the routing of the different functions
+	router := mux.NewRouter()
+	router.HandleFunc("/ping", handlers.PingHandler)
+	router.Handle(
+		"/{consumer_id}",
+		handlers.AuthorizationCheck(
+			http.HandlerFunc(handlers.UpdateConsumerInformation),
+		),
+	).Methods("PATCH")
+	router.Handle(
+		"/{consumer_id}",
+		handlers.AuthorizationCheck(
+			http.HandlerFunc(handlers.DeleteConsumerFromDatabase),
+		),
+	).Methods("DELETE")
+	router.Handle(
+		"/",
+		handlers.AuthorizationCheck(
+			http.HandlerFunc(handlers.GetConsumers),
+		),
+	).Methods("GET")
+	router.Handle(
+		"/",
+		handlers.AuthorizationCheck(
+			http.HandlerFunc(handlers.CreateNewConsumer),
+		),
+	).Methods("PUT")
 }

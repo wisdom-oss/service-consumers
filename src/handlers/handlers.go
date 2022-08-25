@@ -68,34 +68,6 @@ func PingHandler(w http.ResponseWriter, _ *http.Request) {
 }
 
 /*
-RequestHandler
-
-This handler is used to dispatch the requests to the handlers respective to the request method.
-
-Supported request methods are: GET, PATCH, PUT, DELETE
-*/
-func RequestHandler(w http.ResponseWriter, r *http.Request) {
-	// Check the method of the http request
-	switch r.Method {
-	case http.MethodGet:
-		returnConsumerInformation(w, r)
-		break
-	case http.MethodPut:
-		createNewConsumer(w, r)
-		break
-	case http.MethodPatch:
-		updateConsumerInformation(w, r)
-		break
-	case http.MethodDelete:
-		deleteConsumerFromDatabase(w, r)
-		break
-	default:
-		helpers.SendRequestError(e.UnsupportedHTTPMethod, w)
-		break
-	}
-}
-
-/*
 validateRequestParameters
 
 This function validates the query parameters:
@@ -137,11 +109,11 @@ func validateRequestParameters(w http.ResponseWriter, r *http.Request) {
 }
 
 /*
-returnConsumerInformation
+GetConsumers
 
 Return a response with the consumers matching the filters set by the query parameters.
 */
-func returnConsumerInformation(w http.ResponseWriter, r *http.Request) {
+func GetConsumers(w http.ResponseWriter, r *http.Request) {
 	logger := log.WithFields(log.Fields{
 		"middleware": false,
 		"title":      "ReturnConsumerInformation",
@@ -283,9 +255,11 @@ func returnConsumerInformation(w http.ResponseWriter, r *http.Request) {
 }
 
 /*
+CreateNewConsumer
+
 Create a new consumer according to the request bodies content
 */
-func createNewConsumer(w http.ResponseWriter, r *http.Request) {
+func CreateNewConsumer(w http.ResponseWriter, r *http.Request) {
 	logger := log.WithFields(log.Fields{
 		"middleware": false,
 		"title":      "createNewConsumer",
@@ -362,10 +336,10 @@ func createNewConsumer(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func updateConsumerInformation(w http.ResponseWriter, r *http.Request) {
+func UpdateConsumerInformation(w http.ResponseWriter, r *http.Request) {
 	// TODO: Implement code logic
 }
 
-func deleteConsumerFromDatabase(w http.ResponseWriter, r *http.Request) {
+func DeleteConsumerFromDatabase(w http.ResponseWriter, r *http.Request) {
 	// TODO: Implement code logic
 }
