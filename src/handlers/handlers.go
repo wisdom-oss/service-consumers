@@ -431,7 +431,7 @@ func UpdateConsumerInformation(w http.ResponseWriter, r *http.Request) {
 func DeleteConsumerFromDatabase(w http.ResponseWriter, r *http.Request) {
 	logger := log.WithFields(log.Fields{
 		"middleware": false,
-		"action":     "UpdateConsumerInformation",
+		"action":     "DeleteConsumerFromDatabase",
 	})
 	pathVars := mux.Vars(r)
 	consumerId := pathVars["consumer_id"]
