@@ -1,25 +1,228 @@
 # TODO: Extend the documentation with the information about your service
 openapi: 3.0.0
 info:
-  title: Microservice Template
-  description: This microservice template is used to allow new developers to start with a new microservice fast
-               The template is written in Golang
+  title: WISdoM OSS - Consumer Management Service
+  description: |
+    This microservice allows access to the consumer database. The consumers listed in the database have the following 
+    attributes:
+    - Name
+    - Location
+    - UUID
+    
+    The consumer management service is one of the core services of the WISdoM system and is automatically included with
+    every standard installation.
+    
+    **IMPORTANT NOTICE**  
+    This service requires, that the user accessing it was previously authorized via the authorization service and has
+    the correct scope for accessing this service. The definition of the scope is stored in the scope description file
+    as long as there is no manual replacement done. The scope description file is stored in the folder `res` in the root
+    of the repository
   version: '1.0'
 
 servers:
-  - url: /
+  - url: https://wisdom-demo.uol.de/api/consumers
     description: The default API endpoint for the WISdoM demo server
 
+components:
+  securitySchemes:
+    WISdoM_Auth:
+      type: oauth2
+      flows:
+        password:
+          tokenUrl: /api/oauth/token
+          refreshUrl: /api/oauth/token
+  schemas:
+    Consumer:
+      properties:
+        id:
+          type: string
+          title: Consumer UUID
+          description: The UUID of the consumer which identifies the consumer in the database and related HTTP requests
+          pattern: ^[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$
+        name:
+          type: string
+          title: Consumer Name
+          description: The name of the consumer
+        location:
+          type: object
+          title: Location
+          description: >
+            The consumers location expressed as GeoJSON (Point Geometry). To keep this file as simple as possible the 
+            schema for the GeoJson will not be inserted into the object. If you are interested in the GeoJSON schema,
+            the GeoJSON schema for the point geometry is available [here](https://geojson.org/schema/Point.json). A 
+            complete schema can be found [here](https://geojson.org/schema/GeoJSON.json) 
+    IncomingConsumerData:
+      properties:
+        name:
+          type: string
+          title: Consumer Name
+          description: The name of the consumer
+        lat:
+          type: number
+          title: Location (Latitude)
+          description: >
+            The latitude of the consumers location
+        long:
+          type: number
+          title: Location (Longitude)
+          description: >
+            The longitude of the consumers location
 paths:
   /:
     get:
-      summary: Get a test message
-      description: Hello World
+      tags:
+        - Management Operation
+      summary: Get a list of the consumers matching the filter parameters
+      security:
+        - WISdoM_Auth:
+            - //SEE SCOPE DESCRIPTION FILE//
+      description: >
+        This endpoint allows you to access a list of all consumers listed in the database. To filter your results you
+        may use the `usage_above`, `in` and `id` query parameters which will be documented here.
+      parameters:
+        - in: query
+          name: usage_above
+          description: |
+            The minimal water usage in cubic meters (`m³`) a consumer has ever recorded.
+            
+            _Please note that the query will take much longer since the database needs to check the usage data._
+          schema:
+            type: integer
+        - in: query
+          name: in
+          description: |
+            One or more keys of a municipal or district which limits the search area. If no consumers are within the
+            selected areas, the service will response with an empty response via `NO_CONTENT`
+          schema:
+            type: array
+            items:
+              type: string
+              pattern: ^[01][0-6][0-9]{0,10}$
+        - in: query
+          name: id
+          description: |
+            One or more consumer UUIDs to select them directly to pull the available information about them. If none of
+            the UUIDs match, the service will response with an empty response via `NO_CONTENT`
+          schema:
+            type: array
+            items:
+              type: string
+              pattern: ^[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$
+
       responses:
         200:
-          description: Hello World
+          description: A list of the consumers matching the filters
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Consumer"
+
+        204:
+          description: |
+            No consumers match the given filters, or there are no consumers in the database
+    put:
+      tags:
+        - Management Operation
+      summary: Create a new consumer
+      security:
+        - WISdoM_Auth:
+            - //SEE SCOPE DESCRIPTION FILE//
+      description: |
+        This endpoint allows you to create a new consumer in the database.
+        
+        **Important Notice**  
+        The database is set up with a unique constraint. You may not insert two consumers with the same name in the same
+        location.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IncomingConsumerData"
+      responses:
+        201:
+          description: |
+            The consumer was successfully created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Consumer"
+        409:
+          description: |
+            A consumer with the same name and the same location already exists in the database
+  /{consumerId}:
+    patch:
+      tags:
+        - Management Operation
+      summary: Update Consumer Information
+      security:
+        - WISdoM_Auth:
+            - //SEE SCOPE DESCRIPTION FILE//
+      description: |
+        Update the information which is stored about the consumer.
+        
+        **Notice**  
+        To set the attributes that shall be changed, you need to set the query parameter change accordingly
+      parameters:
+        - in: path
+          name: consumerId
+          description: |
+            The uuid of the consumer that shall be edited
+          schema:
+            type: string
+            pattern: ^[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$
+        - in: query
+          name: update
+          description: |
+            The attribute(s) of the consumer that shall be updated.
+            
+            **If no attributes are set the consumer will not be edited**
+          schema:
+            type: array
+            items:
+              type: string
+              enum:
+                - name
+                - coordinates
+      responses:
+        200:
+          description: Updated the consumer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Consumer"
+        304:
+          description: The consumer was not updated
+    delete:
+      tags:
+        - Management Operation
+      summary: Delete a consumer from the database
+      security:
+        - WISdoM_Auth:
+            - //SEE SCOPE DESCRIPTION FILE//
+      description: |
+        When deleting a consumer from the database, the associated usages are **_not_** removed from the database since
+        the usage data may still be important for forecasts or other services.
+        
+        _If a invalid consumer ID is set in the request the service will still respond with the same response. This 
+        behavior is intended as a protection against brute-forcing a consumer UUID for deletion_
+      parameters:
+        - in: path
+          name: consumerId
+          description: |
+            The UUID of the consumer that shall be deleted
+          schema:
+            type: string
+            pattern: ^[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$
+      responses:
+        204:
+          description: |
+            The deletion request was successfully executed.
   /ping:
     get:
+      tags:
+        - Miscellaneous Operations
       summary: Ping the service to test its reachability
       description: The microservice will respond with a 204 No Content when pinging it
       responses:
