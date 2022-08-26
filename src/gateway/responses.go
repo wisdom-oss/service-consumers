@@ -65,3 +65,8 @@ type RouteList struct {
 	Routes []RouteInformation `json:"data"`
 	Next   string             `json:"next"`
 }
+
+type PluginList struct {
+	Plugins []PluginInformation `json:"data"`
+	Next    string              `json:"next"`
+}

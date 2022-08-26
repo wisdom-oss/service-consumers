@@ -57,10 +57,15 @@ type RouteInformation struct {
 	} `json:"service"`
 }
 
-type Consumer struct {
-	Id        string   `json:"id"`
-	CreatedAt int      `json:"created_at"`
-	Username  string   `json:"username"`
-	CustomId  string   `json:"custom_id"`
-	Tags      []string `json:"tags"`
+type PluginInformation struct {
+	Id        string      `json:"id"`
+	Name      string      `json:"name"`
+	CreatedAt int         `json:"created_at"`
+	Route     interface{} `json:"route"`
+	Service   interface{} `json:"service"`
+	Consumer  interface{} `json:"consumer"`
+	Config    struct{}    `json:"config"`
+	Protocols []string    `json:"protocols"`
+	Enabled   bool        `json:"enabled"`
+	Tags      []string    `json:"tags"`
 }
