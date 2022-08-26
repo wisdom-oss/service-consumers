@@ -28,7 +28,6 @@ var logger = log.WithFields(log.Fields{
 // Information about the upstream used by this service
 var Upstream *UpstreamConfiguration
 var ServiceEntry *ServiceConfiguration
-var InternalConsumer *Consumer
 
 /*
 PrepareGatewayConnections
@@ -417,4 +416,44 @@ func ConfigureRoute() bool {
 		return true
 	}
 
+}
+
+/*
+ServiceHasOAuth2Configured
+
+Check if the service entry is already configured with the OAuth 2.0 plugin
+*/
+func ServiceHasOAuth2Configured() bool {
+	logger := logger.WithFields(log.Fields{
+		"function": "ConfigureRoute",
+	})
+	if !connectionsPrepared {
+		logger.
+			Warning("The gateway connections have not been prepared before calling this method")
+		return false
+	}
+
+	// Request a list of plugins associated to the service entry of the microservice
+	response, err := http.Get(gatewayAPIUrl + "/services/" + ServiceEntry.Id + "/plugins")
+	if err != nil {
+		logger.WithError(err).Error("An error occurred while sending the request to the gateway.")
+		return false
+	}
+	if response.StatusCode != 200 {
+		logger.WithField("httpCode", response.StatusCode).Error("The gateway responded with a unexpected status code")
+		return false
+	}
+	var pluginList PluginList
+	parsingError := json.NewDecoder(response.Body).Decode(&pluginList)
+	if parsingError != nil {
+		logger.WithError(parsingError).Warning("Unable to parse the response sent by the gateway, " +
+			"but the status code reports a success")
+		return true
+	}
+	for _, plugin := range pluginList.Plugins {
+		if plugin.Name == "oauth2" {
+			return true
+		}
+	}
+	return false
 }
