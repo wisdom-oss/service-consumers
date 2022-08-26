@@ -56,3 +56,11 @@ type RouteInformation struct {
 		Id string `json:"id"`
 	} `json:"service"`
 }
+
+type Consumer struct {
+	Id        string   `json:"id"`
+	CreatedAt int      `json:"created_at"`
+	Username  string   `json:"username"`
+	CustomId  string   `json:"custom_id"`
+	Tags      []string `json:"tags"`
+}
