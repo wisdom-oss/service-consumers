@@ -343,7 +343,21 @@ func UpdateConsumerInformation(w http.ResponseWriter, r *http.Request) {
 		"action":     "UpdateConsumerInformation",
 	})
 	pathVars := mux.Vars(r)
-	consumerId := pathVars["consumer_id"]
+	consumerIdParameter := pathVars["consumer_id"]
+	var consumerId, name string
+	// Check if the consumer exists or if there is no consumer with this id
+	consumerCheckQuery := `SELECT id, name FROM water_usage.consumers WHERE id = $1`
+	consumerCheckRow := vars.PostgresConnection.QueryRow(consumerCheckQuery, consumerIdParameter)
+	err := consumerCheckRow.Scan(&consumerId, &name)
+	if err != nil && err == sql.ErrNoRows {
+		logger.Warning("Trying to update a consumer which is not present in the database")
+		helpers.SendRequestError(e.NoSuchConsumer, w)
+		return
+	} else if err != nil && err != sql.ErrNoRows {
+		logger.WithError(err).Error("An error occurred while trying to check the database for the consumer")
+		helpers.SendRequestError(e.DatabaseQueryError, w)
+		return
+	}
 	var newConsumerData structs.IncomingConsumerData
 	parsingError := json.NewDecoder(r.Body).Decode(&newConsumerData)
 	if parsingError != nil {
@@ -385,10 +399,10 @@ func UpdateConsumerInformation(w http.ResponseWriter, r *http.Request) {
 		}
 	case !updateName && !updateLocation:
 		w.WriteHeader(http.StatusNotModified)
-		break
+		return
 	default:
 		w.WriteHeader(http.StatusNotModified)
-		break
+		return
 	}
 	selectQuery := `SELECT id, name, st_asgeojson(location) FROM water_usage.consumers WHERE id = $1`
 	consumerRow, selectError := vars.PostgresConnection.Query(selectQuery, consumerId)
@@ -425,6 +439,7 @@ func UpdateConsumerInformation(w http.ResponseWriter, r *http.Request) {
 	if encodingError != nil {
 		logger.WithError(encodingError).Error("An error occurred while returning the response")
 		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 }
 
@@ -443,4 +458,5 @@ func DeleteConsumerFromDatabase(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+	return
 }
