@@ -236,5 +236,9 @@ func init() {
 		if !gateway.IsRouteConfigured() {
 			gateway.ConfigureRoute()
 		}
+		// Now check if the OAuth2.0 plugin is configured correctly
+		if !gateway.ServiceHasOAuth2Configured() {
+			gateway.SetUpOAuth2ForService()
+		}
 	}
 }
