@@ -397,6 +397,7 @@ func ConfigureRoute() bool {
 	response, err := http.PostForm(gatewayAPIUrl+"/services/"+ServiceEntry.Id+"/routes", requestBody)
 	if err != nil {
 		logger.WithError(err).Error("An error occurred while sending the request to the gateway.")
+		return false
 	}
 	if response.StatusCode != 200 && response.StatusCode != 201 {
 		logger.WithField("httpCode", response.StatusCode).Error("The gateway did not respond with the correct status")
@@ -435,6 +436,7 @@ func IsConsumerAvailable() bool {
 	response, err := http.Get(gatewayAPIUrl + "/consumers/internal")
 	if err != nil {
 		logger.WithError(err).Error("An error occurred while sending the request to the gateway.")
+		return false
 	}
 	switch response.StatusCode {
 	case 200:
@@ -450,6 +452,49 @@ func IsConsumerAvailable() bool {
 		return false
 	default:
 		logger.WithField("httpCode", response.StatusCode).Error("The gateway sent a unexpected status code")
+		return false
+	}
+}
+
+/*
+CreateInternalConsumer
+
+Create the internal consumer which will be used to configure plugins automatically
+*/
+func CreateInternalConsumer() bool {
+	logger := logger.WithFields(log.Fields{
+		"function": "CreateInternalConsumer",
+	})
+	if !connectionsPrepared {
+		logger.
+			Warning("The gateway connections have not been prepared before calling this method")
+	}
+
+	// Build the request body
+	requestBody := url.Values{}
+	requestBody.Set("username", "internal")
+
+	// Send the request
+	response, err := http.PostForm(gatewayAPIUrl+"/consumers", requestBody)
+	if err != nil {
+		logger.WithError(err).Error("An error occurred while sending the request to the gateway.")
+		return false
+	}
+
+	switch response.StatusCode {
+	case 201:
+		logger.Info("Successfully created the internal consumer in the gateway")
+		parsingError := json.NewDecoder(response.Body).Decode(&InternalConsumer)
+		if parsingError != nil {
+			logger.WithError(parsingError).Warning("Unable to parse the response sent by the gateway, " +
+				"but the status code reports a success")
+		}
+		return true
+	case 409:
+		logger.Warning("The internal consumer already exists. No need for creating it")
+		return false
+	default:
+		logger.WithField("httpCode", response.StatusCode).Error("The gateway sent a unexpected status code.")
 		return false
 	}
 }
