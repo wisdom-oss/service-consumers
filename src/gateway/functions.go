@@ -396,6 +396,7 @@ func ConfigureRoute() bool {
 	response, err := http.PostForm(gatewayAPIUrl+"/services/"+ServiceEntry.Id+"/routes", requestBody)
 	if err != nil {
 		logger.WithError(err).Error("An error occurred while sending the request to the gateway.")
+		return false
 	}
 	if response.StatusCode != 200 && response.StatusCode != 201 {
 		logger.WithField("httpCode", response.StatusCode).Error("The gateway did not respond with the correct status")
@@ -415,4 +416,83 @@ func ConfigureRoute() bool {
 		return true
 	}
 
+}
+
+/*
+ServiceHasOAuth2Configured
+
+Check if the service entry is already configured with the OAuth 2.0 plugin
+*/
+func ServiceHasOAuth2Configured() bool {
+	logger := logger.WithFields(log.Fields{
+		"function": "ConfigureRoute",
+	})
+	if !connectionsPrepared {
+		logger.
+			Warning("The gateway connections have not been prepared before calling this method")
+		return false
+	}
+
+	// Request a list of plugins associated to the service entry of the microservice
+	response, err := http.Get(gatewayAPIUrl + "/services/" + ServiceEntry.Id + "/plugins")
+	if err != nil {
+		logger.WithError(err).Error("An error occurred while sending the request to the gateway.")
+		return false
+	}
+	if response.StatusCode != 200 {
+		logger.WithField("httpCode", response.StatusCode).Error("The gateway responded with a unexpected status code")
+		return false
+	}
+	var pluginList PluginList
+	parsingError := json.NewDecoder(response.Body).Decode(&pluginList)
+	if parsingError != nil {
+		logger.WithError(parsingError).Warning("Unable to parse the response sent by the gateway, " +
+			"but the status code reports a success")
+		return true
+	}
+	for _, plugin := range pluginList.Plugins {
+		if plugin.Name == "oauth2" {
+			return true
+		}
+	}
+	return false
+}
+
+/*
+SetUpOAuth2ForService
+
+Set up the OAuth2.0 plugin for this service and allow tokens from other plugins to be used to only require one
+authorization step
+*/
+func SetUpOAuth2ForService() bool {
+	logger := logger.WithFields(log.Fields{
+		"function": "SetUpOAuth2ForService",
+	})
+	if !connectionsPrepared {
+		logger.
+			Warning("The gateway connections have not been prepared before calling this method")
+		return false
+	}
+
+	// Build the request body
+	requestBody := url.Values{}
+	requestBody.Set("name", "oauth2")
+	requestBody.Set("config.mandatory_scope", "false")
+	requestBody.Set("config.token_expiration", "3600")
+	requestBody.Set("config.enable_password_grant", "true")
+	requestBody.Set("config.accept_http_if_already_terminated", "true")
+	requestBody.Set("config.global_credentials", "true")
+
+	// Send a request which creates the plugin for the service
+	response, err := http.PostForm(gatewayAPIUrl+"/services/"+ServiceEntry.Id+"/plugins", requestBody)
+	if err != nil {
+		logger.WithError(err).Error("An error occurred while sending the request to the gateway.")
+		return false
+	}
+	if response.StatusCode != 201 {
+		logger.WithField("httpCode", response.StatusCode).Error("The gateway responded with a unexpected status code")
+		return false
+	}
+	logger.Info("Successfully created the OAuth2.0 Plugin for the service entry")
+	return true
 }
