@@ -56,3 +56,16 @@ type RouteInformation struct {
 		Id string `json:"id"`
 	} `json:"service"`
 }
+
+type PluginInformation struct {
+	Id        string      `json:"id"`
+	Name      string      `json:"name"`
+	CreatedAt int         `json:"created_at"`
+	Route     interface{} `json:"route"`
+	Service   interface{} `json:"service"`
+	Consumer  interface{} `json:"consumer"`
+	Config    struct{}    `json:"config"`
+	Protocols []string    `json:"protocols"`
+	Enabled   bool        `json:"enabled"`
+	Tags      []string    `json:"tags"`
+}
