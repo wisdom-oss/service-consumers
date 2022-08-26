@@ -28,6 +28,7 @@ var logger = log.WithFields(log.Fields{
 // Information about the upstream used by this service
 var Upstream *UpstreamConfiguration
 var ServiceEntry *ServiceConfiguration
+var InternalConsumer *Consumer
 
 /*
 PrepareGatewayConnections
@@ -415,4 +416,40 @@ func ConfigureRoute() bool {
 		return true
 	}
 
+}
+
+/*
+IsConsumerAvailable
+
+Check if a consumer is available for setting up the OAuth2.0 Plugin
+*/
+func IsConsumerAvailable() bool {
+	logger := logger.WithFields(log.Fields{
+		"function": "IsConsumerAvailable",
+	})
+	if !connectionsPrepared {
+		logger.
+			Warning("The gateway connections have not been prepared before calling this method")
+	}
+	// Build a query to check if the consumer "internal" is available or created
+	response, err := http.Get(gatewayAPIUrl + "/consumers/internal")
+	if err != nil {
+		logger.WithError(err).Error("An error occurred while sending the request to the gateway.")
+	}
+	switch response.StatusCode {
+	case 200:
+		logger.Info("Found the internal consumer")
+		parsingError := json.NewDecoder(response.Body).Decode(&InternalConsumer)
+		if parsingError != nil {
+			logger.WithError(parsingError).Warning("Unable to parse the response sent by the gateway, " +
+				"but the status code reports a success")
+		}
+		return true
+	case 404:
+		logger.Warning("The internal consumer does not exist. Consider creating it")
+		return false
+	default:
+		logger.WithField("httpCode", response.StatusCode).Error("The gateway sent a unexpected status code")
+		return false
+	}
 }
