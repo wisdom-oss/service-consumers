@@ -18,6 +18,7 @@ const InvalidQueryParameter = "INVALID_QUERY_PARAMETER"
 const DatabaseQueryError = "DATABASE_QUERY_ERROR"
 const UnprocessableEntity = "UNPROCESSABLE_ENTITY"
 const UniqueConstraintViolation = "UNIQUE_CONSTRAINT_VIOLATION"
+const NoSuchConsumer = "NO_SUCH_CONSUMER"
 
 var errorTitle = map[string]string{
 	UnauthorizedRequest:       "Unauthorized Request",
@@ -27,6 +28,7 @@ var errorTitle = map[string]string{
 	DatabaseQueryError:        "Database Query Error",
 	UnprocessableEntity:       "Unprocessable Entity",
 	UniqueConstraintViolation: "Unique Constraint Violation",
+	NoSuchConsumer:            "No Such Consumer",
 }
 
 var errorDescription = map[string]string{
@@ -42,6 +44,8 @@ var errorDescription = map[string]string{
 	UnprocessableEntity: "The JSON object you sent to the service is not processable. Please check your request",
 	UniqueConstraintViolation: "The object you are trying to create already exists in the database. " +
 		"Please check your request and the documentation",
+	NoSuchConsumer: "The consumer you tried to access does not exist in the database. " +
+		"Please create it or check your request.",
 }
 
 var httpStatus = map[string]int{
@@ -52,6 +56,7 @@ var httpStatus = map[string]int{
 	DatabaseQueryError:        http.StatusInternalServerError,
 	UnprocessableEntity:       http.StatusUnprocessableEntity,
 	UniqueConstraintViolation: http.StatusConflict,
+	NoSuchConsumer:            http.StatusNotFound,
 }
 
 func NewRequestError(errorCode string) structs.RequestError {
