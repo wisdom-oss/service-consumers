@@ -19,7 +19,7 @@ This function is used to set up the http server for the microservice
 */
 func main() {
 	if vars.ExecuteHealthcheck {
-		response, err := http.Get("http://localhost:" + vars.HttpListenPort + "/ping")
+		response, err := http.Get("http://localhost:" + vars.ListenPort + "/ping")
 		if err != nil {
 			os.Exit(1)
 		}
@@ -59,7 +59,7 @@ func main() {
 
 	// Configure the HTTP server
 	server := &http.Server{
-		Addr:         fmt.Sprintf("0.0.0.0:%s", vars.HttpListenPort),
+		Addr:         fmt.Sprintf("0.0.0.0:%s", vars.ListenPort),
 		WriteTimeout: time.Second * 15,
 		ReadTimeout:  time.Second * 15,
 		IdleTimeout:  time.Second * 60,

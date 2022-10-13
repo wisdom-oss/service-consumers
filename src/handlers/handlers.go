@@ -43,7 +43,7 @@ func AuthorizationCheck(nextHandler http.Handler) http.Handler {
 		}
 
 		scopeList := strings.Split(scopes, ",")
-		if !helpers.StringArrayContains(scopeList, vars.Scope.ScopeValue) {
+		if !helpers.StringArrayContains(scopeList, vars.ScopeConfiguration.ScopeValue) {
 			logger.Error("Request rejected. The user is missing the scope needed for accessing this service")
 			requestError := e.NewRequestError(e.MissingScope)
 			w.Header().Set("Content-Type", "text/json")

@@ -1,4 +1,4 @@
-// This file contains all globally used variables and their default values
+// Package vars contains all globally used variables and their default values
 package vars
 
 import (
@@ -10,51 +10,42 @@ import (
 const ServiceName = "consumer-management"
 
 var (
-	// The host on which the API gateway runs and this service shall be registered on
-	ApiGatewayHost string
-	// The administration port of the api gateway on the host
-	ApiGatewayAdminPort string
-	// The path on which the service shall be reachable
-	ApiGatewayServicePath string
-	// The http port on which the service will listen for new requests
-	HttpListenPort string
-	// Indicator if a health check shall be executed instead of the main() function
+
+	// APIGatewayHost contains the IP address or hostname of the used Kong API Gateway
+	APIGatewayHost string
+
+	// APIGatewayPort contains the port on which the admin api of the Kong API Gateway listens
+	APIGatewayPort int
+
+	// ServiceRoutePath is the path under which the instance of the microservice shall be reachable via the Kong API
+	// Gateway
+	ServiceRoutePath string
+
+	// ListenPort is the port this microservice will listen on. It defaults to 8000
+	ListenPort string
+
+	// ExecuteHealthcheck is an indicator for the microservice if the service shall execute a healthcheck.
+	//You can trigger a health check by starting the executable with -healthcheck
 	ExecuteHealthcheck bool
-	// ScopeConfigFilePath
-	// The path to the location where the scope configuration is stored.
-	// Default: /microservice/res/scope.json
-	ScopeConfigFilePath string
-	// The scope the service was configured with
-	Scope *structs.ScopeInformation
-	/*
-		PostgresHost
 
-		The host on which the consumer database is running on
-	*/
-	PostgresHost string
-	/*
-		PostgresUser
+	// ScopeConfigurationPath specifies from where the service should read the configuration of the needed access scope
+	ScopeConfigurationPath string
 
-		The user used to access the postgres database
-	*/
-	PostgresUser string
-	/*
-		PostgresPassword
+	// ScopeConfiguration containing the information about the scope needed to access this service
+	ScopeConfiguration *structs.ScopeInformation
 
-		The password of the user used to access the postgres database
-	*/
-	PostgresPassword string
-	/*
-		PostgresPort
+	// DatabaseHost specifies the host on which the postgres database runs on
+	DatabaseHost string
 
-		The port on which the postgres database listens on for new connections. Default value: 5432
-	*/
-	PostgresPort string
-	/*
-		PostgresConnection
+	// DatabaseUser is the username of the postgres user accessing the database
+	DatabaseUser string
 
-		The postgres connection which has been made during the initialization.
-		This connection is shared throughout the microservice
-	*/
+	// DatabaseUserPassword is the password of the user accessing the database
+	DatabaseUserPassword string
+
+	// DatabasePort specifies on which port the database used listens on
+	DatabasePort string
+
+	// PostgresConnection is as connection shared throughout the service
 	PostgresConnection *sql.DB
 )

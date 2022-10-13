@@ -27,11 +27,11 @@ Parameters:
 
 The function returns true if the connection was successful. Else it will return false
 */
-func PingHost(host string, port string, timeout int) bool {
+func PingHost(host string, port int, timeout int) bool {
 	// Build the connection timeout
 	connectionTimeout := time.Duration(timeout) * time.Second
 	// Build the tcp connection target string
-	connectionTarget := fmt.Sprintf("%s:%s", host, port)
+	connectionTarget := fmt.Sprintf("%s:%d", host, port)
 	// Open a tcp connection with the parameters
 	_, connectionError := net.DialTimeout("tcp", connectionTarget, connectionTimeout)
 	if connectionError != nil {
@@ -71,20 +71,6 @@ Check if the string array contains the string s as item
 func StringArrayContains(a []string, s string) bool {
 	for _, item := range a {
 		if item == s {
-			return true
-		}
-	}
-	return false
-}
-
-/*
-StringArrayContainsAnyElement
-
-Check if the string array a contains any element of array b
-*/
-func StringArrayContainsAnyElement(a []string, b []string) bool {
-	for _, item := range b {
-		if StringArrayContains(a, item) {
 			return true
 		}
 	}
