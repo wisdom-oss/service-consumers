@@ -10,7 +10,6 @@ import (
 	"io/ioutil"
 	"os"
 	"strconv"
-	"strings"
 
 	_ "github.com/lib/pq"
 	log "github.com/sirupsen/logrus"
@@ -86,35 +85,18 @@ func init() {
 	logger.Debug("Validating the required environment variables for their existence and if the variables are not empty")
 	// Use os.LookupEnv to check if the variables are existent in the environment, but ignore their values since
 	// they have already been read once
-	var apiGatewayHostSet, apiGatewayAdminPortSet, apiGatewayServicePathSet, httpListenPortSet,
-		scopeConfigFilePathSet, postgresHostSet, postgresUserSet, postgresPasswordSet, postgresPortSet bool
-	vars.APIGatewayHost, apiGatewayHostSet = os.LookupEnv("CONFIG_API_GATEWAY_HOST")
-	tmpAdminPort, apiGatewayAdminPortSet := os.LookupEnv("CONFIG_API_GATEWAY_ADMIN_PORT")
-	vars.ServiceRoutePath, apiGatewayServicePathSet = os.LookupEnv("CONFIG_API_GATEWAY_SERVICE_PATH")
+	var tmpAdminPort string
+
+	var httpListenPortSet, postgresPortSet, scopeConfigFilePathSet bool
 	vars.ListenPort, httpListenPortSet = os.LookupEnv("CONFIG_HTTP_LISTEN_PORT")
-	vars.DatabaseHost, postgresHostSet = os.LookupEnv("CONFIG_POSTGRES_HOST")
-	vars.DatabaseUser, postgresUserSet = os.LookupEnv("CONFIG_POSTGRES_USER")
-	vars.DatabaseUserPassword, postgresPasswordSet = os.LookupEnv("CONFIG_POSTGRES_PASSWORD")
 	vars.DatabasePort, postgresPortSet = os.LookupEnv("CONFIG_POSTGRES_PORT")
+	tmpAdminPort, apiGatewayAdminPortSet := os.LookupEnv("CONFIG_API_GATEWAY_ADMIN_PORT")
 	// Now check the results of the environment variable lookup and check if the string did not only contain whitespaces
-	if !apiGatewayHostSet || strings.TrimSpace(vars.APIGatewayHost) == "" {
-		logger.Fatal("The required environment variable 'CONFIG_API_GATEWAY_HOST' is not populated.")
-	}
-	if !apiGatewayAdminPortSet || strings.TrimSpace(tmpAdminPort) == "" {
-		logger.Fatal("The required environment variable 'CONFIG_API_GATEWAY_ADMIN_PORT' is not populated.")
-	}
-	if !apiGatewayServicePathSet || strings.TrimSpace(vars.ServiceRoutePath) == "" {
-		logger.Fatal("The required environment variable 'CONFIG_API_GATEWAY_SERVICE_PATH' is not populated.")
-	}
-	if !postgresHostSet || strings.TrimSpace(vars.DatabaseHost) == "" {
-		logger.Fatal("The required environment variable 'CONFIG_POSTGRES_HOST' is not populated.")
-	}
-	if !postgresUserSet || strings.TrimSpace(vars.DatabaseUser) == "" {
-		logger.Fatal("The required environment variable 'CONFIG_POSTGRES_USER' is not populated.")
-	}
-	if !postgresPasswordSet || strings.TrimSpace(vars.DatabaseUserPassword) == "" {
-		logger.Fatal("The required environment variable 'CONFIG_POSTGRES_PASSWORD' is not populated.")
-	}
+	helpers.ReadEnvironmentConfig(&vars.APIGatewayHost, "CONFIG_API_GATEWAY_HOST")
+	helpers.ReadEnvironmentConfig(&tmpAdminPort, "CONFIG_API_GATEWAY_HOST")
+	helpers.ReadEnvironmentConfig(&vars.DatabaseHost, "CONFIG_POSTGRES_HOST")
+	helpers.ReadEnvironmentConfig(&vars.DatabaseUser, "CONFIG_POSTGRES_USER")
+	helpers.ReadEnvironmentConfig(&vars.DatabaseUserPassword, "CONFIG_POSTGRES_PASSWORD")
 	// Now check if the optional variables have been set. If not set their respective default values
 	// TODO: Add checks for own optional variables, if needed
 	if !httpListenPortSet {

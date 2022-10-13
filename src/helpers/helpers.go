@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"os"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -90,5 +91,15 @@ func SendRequestError(errorCode string, w http.ResponseWriter) {
 	if encodingError != nil {
 		logger.WithError(encodingError).Error("Unable to encode the request error into json")
 		return
+	}
+}
+
+func ReadEnvironmentConfig(value *string, envName string) {
+	val, isSet := os.LookupEnv(envName)
+	baseErrorString := "The required environment variable %s is not populated."
+	if !isSet {
+		logger.Fatalf(baseErrorString, envName)
+	} else {
+		value = &val
 	}
 }

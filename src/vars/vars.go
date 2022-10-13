@@ -15,14 +15,14 @@ var (
 	APIGatewayHost string
 
 	// APIGatewayPort contains the port on which the admin api of the Kong API Gateway listens
-	APIGatewayPort int
+	APIGatewayPort int = 8001
 
 	// ServiceRoutePath is the path under which the instance of the microservice shall be reachable via the Kong API
 	// Gateway
 	ServiceRoutePath string
 
 	// ListenPort is the port this microservice will listen on. It defaults to 8000
-	ListenPort string
+	ListenPort string = "8000"
 
 	// ExecuteHealthcheck is an indicator for the microservice if the service shall execute a healthcheck.
 	//You can trigger a health check by starting the executable with -healthcheck
