@@ -382,14 +382,15 @@ func UpdateConsumerInformation(w http.ResponseWriter, r *http.Request) {
 	consumerCheckQuery := `SELECT id, name FROM water_usage.consumers WHERE id = $1`
 	consumerCheckRow := vars.PostgresConnection.QueryRow(consumerCheckQuery, consumerIdParameter)
 	err := consumerCheckRow.Scan(&consumerId, &name)
-	if err != nil && err == sql.ErrNoRows {
-		logger.Warning("Trying to update a consumer which is not present in the database")
-		helpers.SendRequestError(e.NoSuchConsumer, w)
-		return
-	} else if err != nil && err != sql.ErrNoRows {
-		logger.WithError(err).Error("An error occurred while trying to check the database for the consumer")
-		helpers.SendRequestError(e.DatabaseQueryError, w)
-		return
+	if err != nil {
+		if err == sql.ErrNoRows {
+			logger.Warning("Trying to update a consumer which is not present in the database")
+			helpers.SendRequestError(e.NoSuchConsumer, w)
+		} else {
+			logger.WithError(err).Error("An error occurred while trying to check the database for the consumer")
+			helpers.SendRequestError(e.DatabaseQueryError, w)
+			return
+		}
 	}
 	var newConsumerData structs.IncomingConsumerData
 	parsingError := json.NewDecoder(r.Body).Decode(&newConsumerData)
