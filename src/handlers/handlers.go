@@ -337,6 +337,40 @@ func CreateNewConsumer(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func updateConsumer(updateConsumerName bool, updateConsumerLocation bool, newName string, newLat float64,
+	newLong float64, consumerId string, w http.ResponseWriter) {
+	logger := log.WithFields(log.Fields{
+		"middleware": false,
+		"action":     "UpdateConsumerInformation",
+	})
+	var queryError error
+	switch {
+	case updateConsumerName && updateConsumerLocation:
+		updateQuery := `UPDATE water_usage.consumers SET name = $1, location=st_makepoint($2, $3) WHERE id = $4`
+		_, queryError = vars.PostgresConnection.Query(updateQuery, newName, newLat,
+			newLong, consumerId)
+		break
+	case updateConsumerName && !updateConsumerLocation:
+		updateQuery := `UPDATE water_usage.consumers SET name = $1 WHERE id = $2`
+		_, queryError = vars.PostgresConnection.Query(updateQuery, newName, consumerId)
+
+		break
+	case !updateConsumerName && updateConsumerLocation:
+		updateQuery := `UPDATE water_usage.consumers SET location=st_makepoint($2, $3) WHERE id = $4`
+		_, queryError = vars.PostgresConnection.Query(updateQuery, newLat, newLong, consumerId)
+		break
+	default:
+		w.WriteHeader(http.StatusNotModified)
+		return
+	}
+
+	if queryError != nil {
+		logger.WithError(queryError).Error("An error occurred while updating the consumer")
+		helpers.SendRequestError(e.DatabaseQueryError, w)
+		return
+	}
+}
+
 func UpdateConsumerInformation(w http.ResponseWriter, r *http.Request) {
 	logger := log.WithFields(log.Fields{
 		"middleware": false,
@@ -368,42 +402,9 @@ func UpdateConsumerInformation(w http.ResponseWriter, r *http.Request) {
 	// Check which attributes shall be updated
 	updateName := r.URL.Query().Has("update") && helpers.StringArrayContains(r.URL.Query()["update"], "name")
 	updateLocation := r.URL.Query().Has("update") && helpers.StringArrayContains(r.URL.Query()["update"], "coordinates")
-	switch {
-	case updateName && updateLocation:
-		updateQuery := `UPDATE water_usage.consumers SET name = $1, location=st_makepoint($2, $3) WHERE id = $4`
-		_, queryError := vars.PostgresConnection.Query(updateQuery, newConsumerData.Name, newConsumerData.Latitude,
-			newConsumerData.Longitude, consumerId)
-		if queryError != nil {
-			logger.WithError(queryError).Error("An error occurred while updating the consumer")
-			helpers.SendRequestError(e.DatabaseQueryError, w)
-			return
-		}
-		break
-	case updateName && !updateLocation:
-		updateQuery := `UPDATE water_usage.consumers SET name = $1 WHERE id = $2`
-		_, queryError := vars.PostgresConnection.Query(updateQuery, newConsumerData.Name, consumerId)
-		if queryError != nil {
-			logger.WithError(queryError).Error("An error occurred while updating the consumer")
-			helpers.SendRequestError(e.DatabaseQueryError, w)
-			return
-		}
-		break
-	case !updateName && updateLocation:
-		updateQuery := `UPDATE water_usage.consumers SET location=st_makepoint($1, $2) WHERE id = $3`
-		_, queryError := vars.PostgresConnection.Query(updateQuery, newConsumerData.Latitude,
-			newConsumerData.Longitude, consumerId)
-		if queryError != nil {
-			logger.WithError(queryError).Error("An error occurred while updating the consumer")
-			helpers.SendRequestError(e.DatabaseQueryError, w)
-			return
-		}
-	case !updateName && !updateLocation:
-		w.WriteHeader(http.StatusNotModified)
-		return
-	default:
-		w.WriteHeader(http.StatusNotModified)
-		return
-	}
+	updateConsumer(updateName, updateLocation, newConsumerData.Name, newConsumerData.Latitude,
+		newConsumerData.Longitude, consumerId, w)
+
 	selectQuery := `SELECT id, name, st_asgeojson(location) FROM water_usage.consumers WHERE id = $1`
 	consumerRow, selectError := vars.PostgresConnection.Query(selectQuery, consumerId)
 	if selectError != nil {
