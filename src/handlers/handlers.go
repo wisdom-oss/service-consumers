@@ -280,7 +280,6 @@ func CreateNewConsumer(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		var dbError *pq.Error
 		errors.As(err, &dbError)
-		println(dbError.Code)
 		if dbError.Code.Name() == "unique_violation" {
 			logger.WithError(dbError).Warning("Unique constraint violation detected while inserting the new consumer.")
 			helpers.SendRequestError(e.UniqueConstraintViolation, w)
