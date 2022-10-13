@@ -132,7 +132,8 @@ paths:
       description: |
         This endpoint allows you to create a new consumer in the database.
         
-        **Important Notice**  
+        **Important Notice**
+        
         The database is set up with a unique constraint. You may not insert two consumers with the same name in the same
         location.
       requestBody:
