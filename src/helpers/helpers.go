@@ -2,6 +2,7 @@ package helpers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -9,7 +10,7 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
-	"microservice/errors"
+	e "microservice/errors"
 )
 
 var logger = log.WithFields(log.Fields{
@@ -84,7 +85,7 @@ SendRequestError
 Send a new request error using the http.ResponseWriter supplied to the function
 */
 func SendRequestError(errorCode string, w http.ResponseWriter) {
-	requestError := errors.NewRequestError(errorCode)
+	requestError := e.NewRequestError(errorCode)
 	w.Header().Set("Content-Type", "text/json")
 	w.WriteHeader(requestError.HttpStatus)
 	encodingError := json.NewEncoder(w).Encode(requestError)
@@ -94,12 +95,11 @@ func SendRequestError(errorCode string, w http.ResponseWriter) {
 	}
 }
 
-func ReadEnvironmentConfig(value *string, envName string) {
+func ReadEnvironmentConfig(envName string) (string, error) {
 	val, isSet := os.LookupEnv(envName)
-	baseErrorString := "The required environment variable %s is not populated."
 	if !isSet {
-		logger.Fatalf(baseErrorString, envName)
+		return "", errors.New("environment not populated")
 	} else {
-		value = &val
+		return val, nil
 	}
 }
