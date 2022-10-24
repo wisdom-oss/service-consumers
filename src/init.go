@@ -305,3 +305,8 @@ func init() {
 		}
 	}
 }
+
+// Print out a message saying that the microservice is starting up now
+func init() {
+	log.Info("All initialization steps were executed successfully. Starting microservice")
+}
