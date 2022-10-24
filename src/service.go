@@ -62,7 +62,7 @@ func main() {
 	}()
 
 	// Set up the signal handling to allow the server to shut down gracefully
-
+	log.Info("The microservice is now able to accept and handle requests")
 	cancelSignal := make(chan os.Signal, 1)
 	signal.Notify(cancelSignal, os.Interrupt)
 
