@@ -143,7 +143,7 @@ func init() {
 		"initStepName": "DEPENDENCY_CONNECTION_CHECK",
 	})
 	// Check if the kong admin api is reachable
-	logger.Infof("Checking if the api gateway on the host '%s' is reachable on port '%s'", vars.APIGatewayHost,
+	logger.Infof("Checking if the api gateway on the host '%s' is reachable on port '%d'", vars.APIGatewayHost,
 		vars.APIGatewayPort)
 	gatewayReachable := helpers.PingHost(vars.APIGatewayHost,
 		vars.APIGatewayPort, 10)
