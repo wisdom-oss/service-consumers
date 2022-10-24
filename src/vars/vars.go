@@ -49,3 +49,10 @@ var (
 	// PostgresConnection is as connection shared throughout the service
 	PostgresConnection *sql.DB
 )
+
+var Defaults = map[string]string{
+	"CONFIG_HTTP_LISTEN_PORT":       "8000",
+	"CONFIG_POSTGRES_PORT":          "5432",
+	"CONFIG_API_GATEWAY_ADMIN_PORT": "8001",
+	"CONFIG_SCOPE_FILE_PATH":        "/microservice/res/scope.json",
+}
