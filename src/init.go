@@ -224,6 +224,8 @@ func init() {
 			} else {
 				log.Info("Successfully created a new upstream for the microservice")
 			}
+		} else {
+			log.Info("A upstream for this microservice already exists. Skipping creation")
 		}
 
 		// Get the local ip address to add it to the upstream targets
@@ -245,6 +247,8 @@ func init() {
 			if !targetAdded {
 				log.Fatal("The target address was not added to the upstream of the service")
 			}
+		} else {
+			log.Info("This instance of the microservice is already set up as a target in the upstream")
 		}
 
 		serviceSetUp, err := gateway.IsServiceSetUp(vars.ServiceName)
@@ -264,6 +268,8 @@ func init() {
 			if !serviceCreated {
 				log.Fatal("The service has not been created due to an unknown error")
 			}
+		} else {
+			log.Info("The microservice already has a service entry set up in the gateway. Skipping creation...")
 		}
 
 		routeSetUp, err := gateway.ServiceHasRouteSetUp(vars.ServiceName)
@@ -293,6 +299,8 @@ func init() {
 				if !routeCreated {
 					log.Fatal("The route was not created due to an unknown reason")
 				}
+			} else {
+				log.Info("The service already has the specified route set up")
 			}
 		}
 	}
