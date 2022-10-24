@@ -103,51 +103,30 @@ func init() {
 		"initStepName": "CONFIGURATION_CHECK",
 	})
 	logger.Debug("Validating the required environment variables for their existence and if the variables are not empty")
-	// Use os.LookupEnv to check if the variables are existent in the environment, but ignore their values since
-	// they have already been read once
-	var tmpAdminPort string
-
-	var httpListenPortSet, postgresPortSet, scopeConfigFilePathSet bool
-	vars.ListenPort, httpListenPortSet = os.LookupEnv("CONFIG_HTTP_LISTEN_PORT")
-	vars.DatabasePort, postgresPortSet = os.LookupEnv("CONFIG_POSTGRES_PORT")
-	tmpAdminPort, apiGatewayAdminPortSet := os.LookupEnv("CONFIG_API_GATEWAY_ADMIN_PORT")
-	// Now check the results of the environment variable lookup and check if the string did not only contain whitespaces
-	helpers.ReadEnvironmentConfig(&vars.APIGatewayHost, "CONFIG_API_GATEWAY_HOST")
-	helpers.ReadEnvironmentConfig(&tmpAdminPort, "CONFIG_API_GATEWAY_HOST")
-	helpers.ReadEnvironmentConfig(&vars.DatabaseHost, "CONFIG_POSTGRES_HOST")
-	helpers.ReadEnvironmentConfig(&vars.DatabaseUser, "CONFIG_POSTGRES_USER")
-	helpers.ReadEnvironmentConfig(&vars.DatabaseUserPassword, "CONFIG_POSTGRES_PASSWORD")
-	// Now check if the optional variables have been set. If not set their respective default values
-	// TODO: Add checks for own optional variables, if needed
-	if !httpListenPortSet {
-		vars.ListenPort = "8000"
+	for envName, valuePointer := range RequiredEnvironmentSettings {
+		var err error
+		*valuePointer, err = helpers.ReadEnvironmentConfig(envName)
+		if err != nil {
+			logger.WithError(err).Fatalf("The environment variable '%s' was not set properly", envName)
+		}
 	}
-	if _, err := strconv.Atoi(vars.ListenPort); err != nil {
-		logger.Warning("The http listen port which has been set is not a number. Defaulting to 8000")
-		vars.ListenPort = "8000"
+	for envName, vP := range OptionalEnvironmentSettings {
+		var err error
+		*vP, err = helpers.ReadEnvironmentConfig(envName)
+		if err != nil {
+			logger.Warningf("The environment variable '%s' was not set. Using the default value", envName)
+			*vP = vars.Defaults[envName]
+		}
 	}
-	if !postgresPortSet {
-		vars.DatabasePort = "5432"
-	}
-	if _, err := strconv.Atoi(vars.DatabasePort); err != nil {
-		logger.Warning("The postgres port which has been set is not a number. Defaulting to 5432")
-		vars.DatabasePort = "5432"
-	}
-	if !apiGatewayAdminPortSet {
-		vars.APIGatewayPort = 8001
-	}
-	tmpAdminPortInt, err := strconv.Atoi(tmpAdminPort)
-	if err != nil {
-		logger.Warning("The gateway admin api port has not been set to a number. Defaulting to 8001")
-		vars.APIGatewayPort = 8001
+	// Now check the numerical variables if their values are really integers
+	tmpIntValue, conversionError := strconv.Atoi(apiGatewayPortString)
+	if conversionError != nil {
+		logger.WithError(conversionError).Warning(
+			"The supplied environment variable value is not convertable to a integer")
 	} else {
-		vars.APIGatewayPort = tmpAdminPortInt
+		vars.APIGatewayPort = tmpIntValue
 	}
 
-	vars.ScopeConfigurationPath, scopeConfigFilePathSet = os.LookupEnv("CONFIG_SCOPE_FILE_PATH")
-	if !scopeConfigFilePathSet {
-		vars.ScopeConfigurationPath = "/microservice/res/scope.json"
-	}
 }
 
 /*
