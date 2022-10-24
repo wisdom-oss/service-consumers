@@ -18,6 +18,26 @@ import (
 	"microservice/vars"
 )
 
+// RequiredEnvironmentSettings is a mapping which contains the name of the environment variable and the location in
+//which the value shall be stored
+var RequiredEnvironmentSettings = map[string]*string{
+	"CONFIG_API_GATEWAY_HOST":         &vars.APIGatewayHost,
+	"CONFIG_POSTGRES_HOST":            &vars.DatabaseHost,
+	"CONFIG_POSTGRES_USER":            &vars.DatabaseUser,
+	"CONFIG_POSTGRES_PASSWORD":        &vars.DatabaseUserPassword,
+	"CONFIG_API_GATEWAY_SERVICE_PATH": &vars.ServiceRoutePath,
+}
+
+// OptionalEnvironmentSettings is a mapping which contains the name of the environment variable as a key and a struct
+//containing the variable to which the value shall be written and the default value
+var apiGatewayPortString string
+var OptionalEnvironmentSettings = map[string]*string{
+	"CONFIG_HTTP_LISTEN_PORT":       &vars.ListenPort,
+	"CONFIG_POSTGRES_PORT":          &vars.DatabasePort,
+	"CONFIG_API_GATEWAY_ADMIN_PORT": &apiGatewayPortString,
+	"CONFIG_SCOPE_FILE_PATH":        &vars.ScopeConfigurationPath,
+}
+
 /*
 Initialization Step 1 - Flag Creation
 
