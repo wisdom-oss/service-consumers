@@ -7,6 +7,7 @@ require github.com/sirupsen/logrus v1.9.0
 require (
 	github.com/gorilla/mux v1.8.0
 	github.com/lib/pq v1.10.6
+	github.com/paulmach/go.geojson v1.4.0
 	github.com/wisdom-oss/golang-kong-access v0.2.0
 )
 
