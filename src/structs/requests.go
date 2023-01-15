@@ -8,8 +8,13 @@ type RequestBody struct {
 	Longitude float64 `json:"long"`
 }
 
-type QueryParameters struct {
+type GetConsumerQueryParameters struct {
 	UsageAbove  []int    `schema:"usage_above"`
 	ConsumerIds []string `schema:"id"`
 	AreaKeys    []string `schema:"in"`
+}
+
+type UpdateConsumerQueryParameters struct {
+	UpdateName     bool `schema:"updateName"`
+	UpdateLocation bool `schema:"updateLocation"`
 }

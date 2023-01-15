@@ -20,12 +20,14 @@ func GetConsumers(w http.ResponseWriter, r *http.Request) {
 	})
 	logger.Info("received new request for consumer information")
 	logger.Debug("parsing the request parameters from the request")
-	params := new(structs.QueryParameters)
+	params := new(structs.GetConsumerQueryParameters)
 	err := schema.NewDecoder().Decode(params, r.URL.Query())
 	// check if the decoding of the query parameters worked
 	if err != nil {
+		logger.WithError(err).Error("unable to parse query parameters")
 		// send an internal error back to the client
 		e.RespondWithInternalError(err, w)
+		return
 	}
 	// now check which parameters have been set by testing the array lengths of the param object properties
 	usageAboveSet := len(params.UsageAbove) > 0
