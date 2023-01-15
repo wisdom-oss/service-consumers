@@ -100,7 +100,7 @@ func GetConsumers(w http.ResponseWriter, r *http.Request) {
 		queryRows, queryError = statement.Query(params.ConsumerIds)
 		// end the handling of the results here since the handling will be centralized
 		break
-	// only the query parameter "in" set has been set
+	// only the query parameter "in" has been set
 	case !usageAboveSet && !consumerIDSet && areaFilterSet:
 		queryText := `SELECT id, name, ST_ASGeoJSON(location) FROM water_usage.consumers 
                       WHERE st_contains((SELECT geom FROM geodata.shapes WHERE key = any($1)), location)`
