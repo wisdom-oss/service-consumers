@@ -36,7 +36,10 @@ func main() {
 	router := mux.NewRouter()
 	router.Use(middleware.AuthorizationCheck)
 	router.HandleFunc("/ping", routes.PingHandler)
-	router.HandleFunc("/", routes.BasicHandler)
+	router.HandleFunc("/{consumer_id}", routes.UpdateConsumer).Methods("PATCH")
+	router.HandleFunc("/{consumer_id}", routes.DeleteConsumer).Methods("DELETE")
+	router.HandleFunc("/", routes.CreateConsumer).Methods("PUT")
+	router.HandleFunc("/", routes.GetConsumers).Methods("GET")
 
 	// Configure the HTTP server
 	server := &http.Server{
