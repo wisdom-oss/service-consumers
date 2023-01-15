@@ -9,11 +9,13 @@ import (
 const MissingAuthorizationInformation = "MISSING_AUTHORIZATION_INFORMATION"
 const InsufficientScope = "INSUFFICIENT_SCOPE"
 const InternalError = "INTERNAL_ERROR"
+const UniqueConstraintViolation = "UNIQUE_CONSTRAINT_VIOLATION"
 
 var titles = map[string]string{
 	MissingAuthorizationInformation: "Unauthorized",
 	InsufficientScope:               "Insufficient Scope",
 	InternalError:                   "Internal Error",
+	UniqueConstraintViolation:       "Unique Constraint Violation",
 }
 
 var descriptions = map[string]string{
@@ -21,11 +23,13 @@ var descriptions = map[string]string{
 		"however the request did not contain valid authorization information. Please check the request",
 	InsufficientScope: "The authorization was successful, " +
 		"but the resource is protected by a scope which was not included in the authorization information",
-	InternalError: "During the handling of the request an unexpected error occurred",
+	InternalError:             "During the handling of the request an unexpected error occurred",
+	UniqueConstraintViolation: "The consumer you tried to insert is already in the database",
 }
 
 var httpCodes = map[string]int{
 	MissingAuthorizationInformation: http.StatusUnauthorized,
 	InsufficientScope:               http.StatusForbidden,
 	InternalError:                   http.StatusInternalServerError,
+	UniqueConstraintViolation:       http.StatusConflict,
 }
