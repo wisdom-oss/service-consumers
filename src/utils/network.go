@@ -20,10 +20,6 @@ func PingHost(host string, port int, timeout int) bool {
 	connectionTarget := fmt.Sprintf("%s:%d", host, port)
 	connection, connectionError := net.DialTimeout("tcp", connectionTarget, connectionTimeout)
 	if connectionError != nil {
-		connectionCloseError := connection.Close()
-		if connectionCloseError != nil {
-			logger.WithError(connectionCloseError).Warning("The connection to the pinged host could not be closed")
-		}
 		return false
 	} else {
 		connectionCloseError := connection.Close()
