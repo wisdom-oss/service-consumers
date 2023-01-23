@@ -8,16 +8,42 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+
 	"os"
 	"strconv"
 	"strings"
 
 	_ "github.com/lib/pq"
 	log "github.com/sirupsen/logrus"
-	"microservice/gateway"
-	"microservice/helpers"
+	gateway "github.com/wisdom-oss/golang-kong-access"
+
+	"microservice/utils"
 	"microservice/vars"
 )
+
+// RequiredSettings associates the name of an environment variable with a pointer to the storage location of the value
+var RequiredSettings = map[string]*string{
+	"API_GATEWAY_HOST": &vars.APIGatewayHost,
+	"PG_HOST":          &vars.DatabaseHost,
+	"PG_USER":          &vars.DatabaseUser,
+	"PG_PASS":          &vars.DatabaseUserPassword,
+	"SERVICE_PATH":     &vars.ServiceRoutePath,
+	// TODO: Add own required settings
+}
+
+// OptionalIntSettings associates the name of an environment variable with a pointer to the storage location of the
+// value. If the value is not found a default value will be loaded
+var OptionalIntSettings = map[string]*int{
+	"LISTEN_PORT":      &vars.ListenPort,
+	"PG_PORT":          &vars.DatabasePort,
+	"API_GATEWAY_PORT": &vars.APIGatewayPort,
+}
+
+// OptionalStringSettings associates the name of an environment variable with a pointer to the storage location of the
+// value. If the value is not found a default value will be loaded
+var OptionalStringSettings = map[string]*string{
+	"SCOPE_FILE_LOCATION": &vars.ScopeConfigurationPath,
+}
 
 /*
 Initialization Step 1 - Flag Creation
@@ -57,12 +83,14 @@ func init() {
 	// Set the level for the logging library
 	log.SetLevel(logrusLoggingLevel)
 	// Set the formatter for the logging library
-	log.SetFormatter(&log.TextFormatter{
-		// Display the full time stamp in the logs
-		FullTimestamp: true,
-		// Show the levels name fully, even though this may result in shifts between the log lines
-		DisableLevelTruncation: true,
-	})
+	log.SetFormatter(
+		&log.TextFormatter{
+			// Display the full time stamp in the logs
+			FullTimestamp: true,
+			// Show the levels name fully, even though this may result in shifts between the log lines
+			DisableLevelTruncation: true,
+		},
+	)
 }
 
 /*
@@ -79,62 +107,50 @@ Furthermore, this step will use sensitive defaults on the following environment 
 TODO: Add own required and optional variables to this function, if needed
 */
 func init() {
-	logger := log.WithFields(log.Fields{
-		"initStep":     3,
-		"initStepName": "CONFIGURATION_CHECK",
-	})
+	logger := log.WithFields(
+		log.Fields{
+			"initStep":     3,
+			"initStepName": "CONFIGURATION_CHECK",
+		},
+	)
 	logger.Debug("Validating the required environment variables for their existence and if the variables are not empty")
-	// Use os.LookupEnv to check if the variables are existent in the environment, but ignore their values since
-	// they have already been read once
-	var apiGatewayHostSet, apiGatewayAdminPortSet, apiGatewayServicePathSet, httpListenPortSet,
-		scopeConfigFilePathSet, postgresHostSet, postgresUserSet, postgresPasswordSet, postgresPortSet bool
-	vars.ApiGatewayHost, apiGatewayHostSet = os.LookupEnv("CONFIG_API_GATEWAY_HOST")
-	vars.ApiGatewayAdminPort, apiGatewayAdminPortSet = os.LookupEnv("CONFIG_API_GATEWAY_ADMIN_PORT")
-	vars.ApiGatewayServicePath, apiGatewayServicePathSet = os.LookupEnv("CONFIG_API_GATEWAY_SERVICE_PATH")
-	vars.HttpListenPort, httpListenPortSet = os.LookupEnv("CONFIG_HTTP_LISTEN_PORT")
-	vars.PostgresHost, postgresHostSet = os.LookupEnv("CONFIG_POSTGRES_HOST")
-	vars.PostgresUser, postgresUserSet = os.LookupEnv("CONFIG_POSTGRES_USER")
-	vars.PostgresPassword, postgresPasswordSet = os.LookupEnv("CONFIG_POSTGRES_PASSWORD")
-	vars.PostgresPort, postgresPortSet = os.LookupEnv("CONFIG_POSTGRES_PORT")
-	// Now check the results of the environment variable lookup and check if the string did not only contain whitespaces
-	if !apiGatewayHostSet || strings.TrimSpace(vars.ApiGatewayHost) == "" {
-		logger.Fatal("The required environment variable 'CONFIG_API_GATEWAY_HOST' is not populated.")
+	// Check the required variables for their values
+	for envName, valuePointer := range RequiredSettings {
+		var err error
+		*valuePointer, err = utils.ReadEnvironmentVariable(envName)
+		if err != nil {
+			logger.WithError(err).Fatalf("The required environment variable '%s' is not set", envName)
+		}
 	}
-	if !apiGatewayAdminPortSet || strings.TrimSpace(vars.ApiGatewayAdminPort) == "" {
-		logger.Fatal("The required environment variable 'CONFIG_API_GATEWAY_ADMIN_PORT' is not populated.")
+
+	// Now check the default integer variables if they exist and are convertible
+	for envName, valuePointer := range OptionalIntSettings {
+		stringValue, err := utils.ReadEnvironmentVariable(envName)
+		if err != nil || strings.TrimSpace(stringValue) == "" {
+			logger.Infof("Using default value '%d' for environment variable '%s'", *valuePointer, envName)
+		} else {
+			intValue, conversionError := strconv.Atoi(stringValue)
+			if conversionError != nil {
+				logger.WithError(conversionError).Warningf(
+					"Using default value '%d' for environment variable '%s'",
+					*valuePointer, envName,
+				)
+			} else {
+				*valuePointer = intValue
+			}
+		}
 	}
-	if !apiGatewayServicePathSet || strings.TrimSpace(vars.ApiGatewayServicePath) == "" {
-		logger.Fatal("The required environment variable 'CONFIG_API_GATEWAY_SERVICE_PATH' is not populated.")
+
+	// Now check for the optional setting strings
+	for envName, valuePointer := range OptionalStringSettings {
+		stringValue, err := utils.ReadEnvironmentVariable(envName)
+		if err != nil || strings.TrimSpace(stringValue) == "" {
+			logger.Infof("Using default value '%s' for environment variavble '%s'", *valuePointer, envName)
+		} else {
+			*valuePointer = stringValue
+		}
 	}
-	if !postgresHostSet || strings.TrimSpace(vars.PostgresHost) == "" {
-		logger.Fatal("The required environment variable 'CONFIG_POSTGRES_HOST' is not populated.")
-	}
-	if !postgresUserSet || strings.TrimSpace(vars.PostgresUser) == "" {
-		logger.Fatal("The required environment variable 'CONFIG_POSTGRES_USER' is not populated.")
-	}
-	if !postgresPasswordSet || strings.TrimSpace(vars.PostgresPassword) == "" {
-		logger.Fatal("The required environment variable 'CONFIG_POSTGRES_PASSWORD' is not populated.")
-	}
-	// Now check if the optional variables have been set. If not set their respective default values
-	// TODO: Add checks for own optional variables, if needed
-	if !httpListenPortSet {
-		vars.HttpListenPort = "8000"
-	}
-	if _, err := strconv.Atoi(vars.HttpListenPort); err != nil {
-		logger.Warning("The http listen port which has been set is not a number. Defaulting to 8000")
-		vars.HttpListenPort = "8000"
-	}
-	if !postgresPortSet {
-		vars.PostgresPort = "5432"
-	}
-	if _, err := strconv.Atoi(vars.PostgresPort); err != nil {
-		logger.Warning("The postgres port which has been set is not a number. Defaulting to 5432")
-		vars.PostgresPort = "5432"
-	}
-	vars.ScopeConfigFilePath, scopeConfigFilePathSet = os.LookupEnv("CONFIG_SCOPE_FILE_PATH")
-	if !scopeConfigFilePathSet {
-		vars.ScopeConfigFilePath = "/microservice/res/scope.json"
-	}
+
 }
 
 /*
@@ -146,25 +162,35 @@ TODO: Add checks for new dependencies
 */
 func init() {
 	// Create a logger for this step
-	logger := log.WithFields(log.Fields{
-		"initStep":     4,
-		"initStepName": "DEPENDENCY_CONNECTION_CHECK",
-	})
+	logger := log.WithFields(
+		log.Fields{
+			"initStep":     4,
+			"initStepName": "DEPENDENCY_CONNECTION_CHECK",
+		},
+	)
 	// Check if the kong admin api is reachable
-	logger.Infof("Checking if the api gateway on the host '%s' is reachable on port '%s'", vars.ApiGatewayHost,
-		vars.ApiGatewayAdminPort)
-	gatewayReachable := helpers.PingHost(vars.ApiGatewayHost,
-		vars.ApiGatewayAdminPort, 10)
+	logger.Infof(
+		"Checking if the api gateway on the host '%s' is reachable on port '%d'", vars.APIGatewayHost,
+		vars.APIGatewayPort,
+	)
+	gatewayReachable := utils.PingHost(
+		vars.APIGatewayHost,
+		vars.APIGatewayPort, 10,
+	)
 	if !gatewayReachable {
-		logger.Fatalf("The api gateway on the host '%s' is not reachable on port '%s'", vars.ApiGatewayHost,
-			vars.ApiGatewayAdminPort)
+		logger.Fatalf(
+			"The api gateway on the host '%s' is not reachable on port '%d'", vars.APIGatewayHost,
+			vars.APIGatewayPort,
+		)
 	} else {
 		logger.Info("The api gateway is reachable via tcp")
 	}
 	// Check if a connection to the postgres database is possible
 	logger.Info("Checking if the postgres database is reachable and the login data is valid")
-	postgresConnectionString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=wisdom sslmode=disable",
-		vars.PostgresHost, vars.PostgresPort, vars.PostgresUser, vars.PostgresPassword)
+	postgresConnectionString := fmt.Sprintf(
+		"host=%s port=%d user=%s password=%s dbname=wisdom sslmode=disable",
+		vars.DatabaseHost, vars.DatabasePort, vars.DatabaseUser, vars.DatabaseUserPassword,
+	)
 	logger.Debugf("Built the follwoing connection string: '%s'", postgresConnectionString)
 	// Create a possible error object
 	var connectionError error
@@ -184,61 +210,153 @@ func init() {
 /**
 Initialization Step 5 - Load the scope setup for this service
 
-This initialization step will load the supplied scope.json file to get the information needed for checking the incoming
+This initialization step will load the supplied scope-example.json file to get the information needed for checking the incoming
 requests for the correct scope
 */
 func init() {
-	logger := log.WithFields(log.Fields{
-		"initStep":     5,
-		"initStepName": "OAUTH2_SCOPE_CONFIGURATION",
-	})
-	logger.Infof("Reading the scope configuration file from '%s'", vars.ScopeConfigFilePath)
-	fileContents, err := ioutil.ReadFile(vars.ScopeConfigFilePath)
+	logger := log.WithFields(
+		log.Fields{
+			"initStep":     5,
+			"initStepName": "OAUTH2_SCOPE_CONFIGURATION",
+		},
+	)
+	logger.Infof("Reading the scope configuration file from '%s'", vars.ScopeConfigurationPath)
+	fileContents, err := ioutil.ReadFile(vars.ScopeConfigurationPath)
 	if err != nil {
 		logger.WithError(err).Fatal("Unable to read the contents of the scope configuration file")
 	}
 	logger.Debugf("Read the following file contents: %s", fileContents)
 	logger.Debug("Parsing the file contents into the scope configuration for the service")
 
-	parserError := json.Unmarshal(fileContents, &vars.Scope)
+	parserError := json.Unmarshal(fileContents, &vars.ScopeConfiguration)
 	if parserError != nil {
-		logger.WithError(parserError).Fatalf("Unable to parse the contents of '%s'", vars.ScopeConfigFilePath)
+		logger.WithError(parserError).Fatalf("Unable to parse the contents of '%s'", vars.ScopeConfigurationPath)
 	}
 }
 
-/**
+/*
 Initialization Step 6 - Register service in upstream of the microservice and setup routing
 
 This initialization step will use the admin api of the api gateway to add itself to the upstream for the service
 instances. If no upstream is set up, one will be created automatically
 */
 func init() {
+	logger := log.WithFields(
+		log.Fields{
+			"initStep":     6,
+			"initStepName": "GATEWAY_SET_UP",
+		},
+	)
 	if !vars.ExecuteHealthcheck {
-		// Since this is the fist call to the api gateway we need to prepare the calls to the gateway
-		gateway.PrepareGatewayConnections()
-		// Now check if the upstream is already set up
-		if !gateway.IsUpstreamSetUp() {
-			gateway.CreateUpstream()
+		setupErr := gateway.SetUpGatewayConnection(vars.APIGatewayHost, vars.APIGatewayPort, false)
+		if setupErr != nil {
+			logger.WithError(setupErr).Fatal("Unable to set up the connection to the api gateway")
 		}
-		// Now check if this service instance is listed in the upstreams targets
-		if !gateway.IsIPAddressInUpstreamTargets() {
-			gateway.AddServiceToUpstreamTargets()
+		upstreamSetUp, err := gateway.IsUpstreamSetUp(vars.ServiceName)
+		if err != nil {
+			logger.WithError(err).Fatal("Unable to check if the service already has a upstream set up")
 		}
-		// Now check if a service entry exists for this service
-		if !gateway.IsServiceSetUp() {
-			gateway.CreateServiceEntry()
+		if !upstreamSetUp {
+			upstreamCreated, err := gateway.CreateNewUpstream(vars.ServiceName)
+			if err != nil {
+				logger.WithError(err).Fatal("Unable to create a new upstream for this microservice")
+			}
+			if !upstreamCreated {
+				logger.Fatal("The upstream was not created even though no error occurred")
+			} else {
+				logger.Info("Successfully created a new upstream for the microservice")
+			}
+		} else {
+			logger.Info("The service already has a upstream entry in the database")
 		}
-		// Now check if the service entry has the upstream already configured as host
-		if !gateway.IsUpstreamSetInServiceEntry() {
-			gateway.SetUpstreamAsServiceEntryHost()
+
+		// Get the local ip address to add it to the upstream targets
+		localIPAddress, _ := utils.LocalIPv4Address()
+		targetAddress := fmt.Sprintf("%s:%d", localIPAddress, vars.ListenPort)
+
+		targetInUpstream, err := gateway.IsAddressInUpstreamTargetList(targetAddress, vars.ServiceName)
+		if err != nil {
+			logger.WithError(err).Fatal(
+				"Unable to check if the address of the container is listed in the upstream of" +
+					" the microservice",
+			)
 		}
-		// Now check if the service entry has a route matching the configuration
-		if !gateway.IsRouteConfigured() {
-			gateway.ConfigureRoute()
+		if !targetInUpstream {
+			// Build the target address
+
+			targetAdded, err := gateway.CreateTargetInUpstream(targetAddress, vars.ServiceName)
+			if err != nil {
+				logger.WithError(err).Fatal("Unable to add the address of the container to the upstream of the microservice")
+			}
+			if !targetAdded {
+				logger.Fatal("The target address was not added to the upstream of the service")
+			} else {
+				logger.Infof("Added the microservices ip address and listen port to the upstream targets")
+			}
+		} else {
+			logger.Info("The microservices ip address and listen port are already listed as upstream targets")
 		}
-		// Now check if the OAuth2.0 plugin is configured correctly
-		if !gateway.ServiceHasOAuth2Configured() {
-			gateway.SetUpOAuth2ForService()
+
+		serviceSetUp, err := gateway.IsServiceSetUp(vars.ServiceName)
+		if err != nil {
+			logger.WithError(err).Fatal(
+				"Unable to check if the microservice already has a service configured on the" +
+					" gateway",
+			)
+		}
+		if !serviceSetUp {
+			logger.Warning(
+				"No service was previously set up for this microservice. " +
+					"Creating a new service on the api gateway",
+			)
+
+			// Create a new service using the previously created/existing upstream as target of the service
+			serviceCreated, err := gateway.CreateService(vars.ServiceName, vars.ServiceName)
+			if err != nil {
+				logger.WithError(err).Fatal("Unable to create a new service for the microservice")
+			}
+			if !serviceCreated {
+				logger.Fatal("The service has not been created due to an unknown error")
+			} else {
+				logger.Info("Successfully created a new service entry for the microservice")
+			}
+		} else {
+			logger.Info("The microservice already has a service entry set up")
+		}
+
+		routeSetUp, err := gateway.ServiceHasRouteSetUp(vars.ServiceName)
+		if err != nil {
+			logger.WithError(err).Fatal("Unable to check if the service of the microservice has any routes configured")
+		}
+		if !routeSetUp {
+			routeCreated, err := gateway.CreateNewRoute(vars.ServiceName, vars.ServiceRoutePath)
+			if err != nil {
+				logger.WithError(err).Fatal("Unable to create a route for the service")
+			}
+			if !routeCreated {
+				logger.Fatal("The route was not created due to an unknown reason")
+			} else {
+				logger.Info("The route was successfully created for this microservice")
+			}
+		} else {
+			routeWithPathExists, err := gateway.ServiceHasRouteWithPathSetUp(vars.ServiceName, vars.ServiceRoutePath)
+			if err != nil {
+				logger.WithError(err).Fatal(
+					"Unable to check if the service of the microservice has a route configured" +
+						" matching the path supplied by the environment",
+				)
+			}
+			if !routeWithPathExists {
+				routeCreated, err := gateway.CreateNewRoute(vars.ServiceName, vars.ServiceRoutePath)
+				if err != nil {
+					logger.WithError(err).Fatal("Unable to create a route for the service")
+				}
+				if !routeCreated {
+					logger.Fatal("The route was not created due to an unknown reason")
+				}
+			} else {
+				logger.Info("The requested route already exists")
+			}
 		}
 	}
 }
