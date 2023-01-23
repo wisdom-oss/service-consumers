@@ -1,7 +1,6 @@
 package structs
 
-import geoJson "github.com/paulmach/go.geojson"
-
+// ScopeInformation contains the information about the scope for this service
 type ScopeInformation struct {
 	JSONSchema       string `json:"$schema"`
 	ScopeName        string `json:"name"`
@@ -9,35 +8,11 @@ type ScopeInformation struct {
 	ScopeValue       string `json:"scopeStringValue"`
 }
 
+// RequestError contains all information about an error which shall be sent back to the client
 type RequestError struct {
 	HttpStatus       int    `json:"httpCode"`
 	HttpError        string `json:"httpError"`
 	ErrorCode        string `json:"error"`
 	ErrorTitle       string `json:"errorName"`
 	ErrorDescription string `json:"errorDescription"`
-}
-
-/*
-Consumer
-
-The consumer holds the following information:
-	- UUID: The internal and external id for the consumer
-	- Name: The name of the consumer
-	- Location: A GeoJSON entity containing the location of the consumer
-*/
-type Consumer struct {
-	UUID     string           `json:"id"`
-	Name     string           `json:"name"`
-	Location geoJson.Geometry `json:"location"`
-}
-
-/*
-IncomingConsumerData
-
-This struct holds the data for creating a new consumer or updating one
-*/
-type IncomingConsumerData struct {
-	Name      string  `json:"name"`
-	Latitude  float64 `json:"lat"`
-	Longitude float64 `json:"long"`
 }
