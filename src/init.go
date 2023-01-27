@@ -3,11 +3,13 @@
 package main
 
 import (
+	"bytes"
 	"database/sql"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"net/http"
 
 	"os"
 	"strconv"
@@ -231,6 +233,23 @@ func init() {
 	parserError := json.Unmarshal(fileContents, &vars.ScopeConfiguration)
 	if parserError != nil {
 		logger.WithError(parserError).Fatalf("Unable to parse the contents of '%s'", vars.ScopeConfigurationPath)
+	}
+
+	// now send the read configuration to the auth service to authenticate users for this service
+	authServiceUrl := fmt.Sprintf("http://%s:8000/auth/scopes/__new", vars.APIGatewayHost)
+
+	request, err := http.NewRequest("PUT", authServiceUrl, bytes.NewBuffer(fileContents))
+	request.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	response, err := client.Do(request)
+	if err != nil {
+		logger.WithError(err).Fatal("Unable to send the scope data to the authorization service")
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != 200 {
+		logger.Fatal("Scope was not accepted by the authorization service")
 	}
 }
 
