@@ -1,0 +1,6 @@
+[submodule "src/utils"]
+	path = src/utils
+	url = https://github.com/wisdom-oss/microservice-utils.git
+[submodule "src/request/middleware"]
+	path = src/request/middleware
+	url = https://github.com/wisdom-oss/microservice-middlewares
