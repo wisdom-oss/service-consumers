@@ -1,0 +1,6 @@
+{
+  "$schema": "https://raw.githubusercontent.com/wisdom-oss/documentation/main/schemas/service-scope.schema.json",
+  "name": "Microservice Template", // TODO: Change the name of the scope and remove the comment
+  "description": "Template Microservice", // TODO: Change the description and remove the comment
+  "scopeStringValue": "change-me" // TODO: Change this value and remove the comment
+}

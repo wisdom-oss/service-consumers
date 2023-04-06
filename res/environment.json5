@@ -1,0 +1,40 @@
+/* This file specifies which environment variables are consumed by the
+microservice. Furthermore, a default value may be set for the environment
+variable if it is optional. */
+{
+  "required": [
+    "API_GATEWAY_HOST", "PG_HOST", "PG_USER", "PG_PASS", "SERVICE_PATH"
+  ],
+  "optional": [
+    {
+      "key": "LISTEN_PORT",
+      "default": "8000"
+    },
+    {
+      "key": "PG_PORT",
+      "default": "5432"
+    },
+    {
+      "key": "API_GATEWAY_PORT",
+      "default": "8001"
+    },
+    {
+      "key": "SCOPE_FILE_LOCATION",
+      "default": "/res/scope.json5"
+    },
+    {
+      "key": "ERROR_FILE_LOCATION",
+      "default": "/res/errors.json5"
+    },
+    {
+      "key": "QUERY_FILE_LOCATION",
+      "default": "/res/queries.sql"
+    },
+    {
+      "key": "GATEWAY_CONFIG_LOCATION",
+      "default": "/res/gateway.json5"
+    }
+  ],
+
+
+}

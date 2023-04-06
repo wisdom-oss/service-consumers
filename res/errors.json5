@@ -1,0 +1,23 @@
+// TODO: Extend this file with the errors that may be sent by your service
+[
+  // keep the errors between this line
+  {
+    "code": "MISSING_AUTHORIZATION_INFORMATION",
+    "title": "Unauthorized",
+    "description": "The resource you tried to access requires authorization. However the request lacked that information",
+    "httpCode": 401
+  },
+  {
+    "code": "INSUFFICIENT_SCOPE",
+    "title": "Insufficient Scope",
+    "description": "The resource you tried to access requires an scope which is not assigned to your authorization information",
+    "httpCode": 403
+  },
+  {
+    "code": "INTERNAL_ERROR",
+    "title": "Internal Application Error",
+    "description": "An unexpected error occurred during the handling of the request.",
+    "httpCode": 500
+  }
+  // and this line. you may extend below this line
+]
