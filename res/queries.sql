@@ -46,7 +46,7 @@ WHERE st_contains((SELECT geom FROM geodata.shapes WHERE key = any($1)), locatio
 -- name: get-consumers-by-usage
 SELECT id, name, ST_ASGeoJSON(location)
 FROM consumers.consumers
-WHERE id IN (SELECT consumer FROM water_usage.usages WHERE value > $1)
+WHERE id IN (SELECT consumer FROM water_usage.usages WHERE value > $1);
 
 -- name: get-all-consumers
 SELECT id, name, ST_ASGeoJSON(location)
