@@ -12,7 +12,7 @@ import (
 	"strconv"
 )
 
-// l is a alias for the http logger
+// l is an alias for the http logger
 var l = globals.HttpLogger
 
 // GetConsumers handles request made to the "/" endpoint using the GET method
