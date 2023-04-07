@@ -10,4 +10,5 @@ var ErrNoIPv4AddressAssigned = errors.New("no accessible interface has a IPv4 ad
 // variable is not populated
 var ErrEnvironmentVariableNotFound = errors.New("the specified environment variable was not populated")
 
+// ErrHttpErrorNotFound will be thrown if a http error is requested which was not configured
 var ErrHttpErrorNotFound = errors.New("the supplied error code does not match any configured http errors")

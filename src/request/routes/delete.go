@@ -1,39 +1,22 @@
 package routes
 
 import (
-	"github.com/gorilla/mux"
-	log "github.com/sirupsen/logrus"
-	e "microservice/request/error"
-	"microservice/vars"
+	"github.com/go-chi/chi/v5"
+	requestErrors "microservice/request/error"
+	"microservice/vars/globals"
+	"microservice/vars/globals/connections"
 	"net/http"
 )
 
 func DeleteConsumer(w http.ResponseWriter, r *http.Request) {
-	logger := log.WithFields(log.Fields{
-		"apiFunction": "DeleteConsumer",
-	})
-	logger.Info("received new request for consumer information")
-	logger.Debug("parsing the request parameters from the request")
+	l.Info().Msg("consumer deletion requested")
+	consumerID := chi.URLParam(r, "consumerID")
 
-	pathParameters := mux.Vars(r)
-	consumerID := pathParameters["consumer_id"]
-
-	// build the sql query
-	queryText := `DELETE FROM water_usage.consumers WHERE id = $1`
-	deleteStatement, err := vars.PostgresConnection.Prepare(queryText)
-
+	_, err := globals.Queries.Exec(connections.DbConnection, "delete-consumer", consumerID)
 	if err != nil {
-		logger.WithError(err).Error("unable to prepare deletion query")
-		// send an internal error back to the client
-		e.RespondWithInternalError(err, w)
-		return
-	}
-
-	// now execute the query
-	_, err = deleteStatement.Exec(consumerID)
-	if err != nil {
-		logger.WithError(err).Error("an error occurred executing the query")
-		e.RespondWithInternalError(err, w)
+		l.Error().Err(err).Msg("failed to execute the delete query")
+		e, _ := requestErrors.WrapInternalError(err)
+		requestErrors.SendError(e, w)
 		return
 	}
 

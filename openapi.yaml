@@ -1,4 +1,3 @@
-# TODO: Extend the documentation with the information about your service
 openapi: 3.0.0
 info:
   title: WISdoM OSS - Consumer Management Service
@@ -17,20 +16,14 @@ info:
     the correct scope for accessing this service. The definition of the scope is stored in the scope description file
     as long as there is no manual replacement done. The scope description file is stored in the folder `res` in the root
     of the repository
-  version: '1.0'
+  version: '2.0'
+
 
 servers:
   - url: https://wisdom-demo.uol.de/api/consumers
     description: The default API endpoint for the WISdoM demo server
 
 components:
-  securitySchemes:
-    WISdoM_Auth:
-      type: oauth2
-      flows:
-        password:
-          tokenUrl: /api/oauth/token
-          refreshUrl: /api/oauth/token
   schemas:
     Consumer:
       properties:
@@ -50,7 +43,7 @@ components:
             The consumers location expressed as GeoJSON (Point Geometry). To keep this file as simple as possible the 
             schema for the GeoJson will not be inserted into the object. If you are interested in the GeoJSON schema,
             the GeoJSON schema for the point geometry is available [here](https://geojson.org/schema/Point.json). A 
-            complete schema can be found [here](https://geojson.org/schema/GeoJSON.json) 
+            complete schema can be found [here](https://geojson.org/schema/GeoJSON.json)
     IncomingConsumerData:
       properties:
         name:
@@ -73,9 +66,6 @@ paths:
       tags:
         - Management Operation
       summary: Get a list of the consumers matching the filter parameters
-      security:
-        - WISdoM_Auth:
-            - //SEE SCOPE DESCRIPTION FILE//
       description: >
         This endpoint allows you to access a list of all consumers listed in the database. To filter your results you
         may use the `usage_above`, `in` and `id` query parameters which will be documented here.
@@ -126,9 +116,6 @@ paths:
       tags:
         - Management Operation
       summary: Create a new consumer
-      security:
-        - WISdoM_Auth:
-            - //SEE SCOPE DESCRIPTION FILE//
       description: |
         This endpoint allows you to create a new consumer in the database.
         
@@ -157,14 +144,12 @@ paths:
       tags:
         - Management Operation
       summary: Update Consumer Information
-      security:
-        - WISdoM_Auth:
-            - //SEE SCOPE DESCRIPTION FILE//
       description: |
         Update the information which is stored about the consumer.
         
-        **Notice**  
-        To set the attributes that shall be changed, you need to set the query parameter change accordingly
+        **Important Notice**
+        To exclude a field from the update, you need to set the value to `null`. However it is not possible to update only one
+        coordinate of the location. If you want to update the location, you need to provide both coordinates.
       parameters:
         - in: path
           name: consumerId
@@ -173,19 +158,11 @@ paths:
           schema:
             type: string
             pattern: ^[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$
-        - in: query
-          name: update
-          description: |
-            The attribute(s) of the consumer that shall be updated.
-            
-            **If no attributes are set the consumer will not be edited**
-          schema:
-            type: array
-            items:
-              type: string
-              enum:
-                - name
-                - coordinates
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IncomingConsumerData"
       responses:
         200:
           description: Updated the consumer
@@ -199,9 +176,6 @@ paths:
       tags:
         - Management Operation
       summary: Delete a consumer from the database
-      security:
-        - WISdoM_Auth:
-            - //SEE SCOPE DESCRIPTION FILE//
       description: |
         When deleting a consumer from the database, the associated usages are **_not_** removed from the database since
         the usage data may still be important for forecasts or other services.
@@ -220,12 +194,3 @@ paths:
         204:
           description: |
             The deletion request was successfully executed.
-  /ping:
-    get:
-      tags:
-        - Miscellaneous Operations
-      summary: Ping the service to test its reachability
-      description: The microservice will respond with a 204 No Content when pinging it
-      responses:
-        '204':
-          description: Response to the ping without any content

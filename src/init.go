@@ -1,381 +1,235 @@
-// This file contains all functions used to start the microservice. Put further prerequisites which may need to be
-// initialized into this file
 package main
 
 import (
-	"bytes"
 	"database/sql"
-	"encoding/json"
-	"flag"
 	"fmt"
-	"io/ioutil"
-	"net/http"
-
+	"github.com/gchaincl/dotsql"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+	"github.com/rs/zerolog/pkgerrors"
+	"github.com/titanous/json5"
+	"github.com/wisdom-oss/microservice-utils"
+	"io"
+	requestErrors "microservice/request/error"
+	"microservice/structs"
+	"microservice/vars"
+	"microservice/vars/globals"
+	"microservice/vars/globals/connections"
 	"os"
-	"strconv"
 	"strings"
 
 	_ "github.com/lib/pq"
-	log "github.com/sirupsen/logrus"
-	gateway "github.com/wisdom-oss/golang-kong-access"
-
-	"microservice/utils"
-	"microservice/vars"
 )
 
-// RequiredSettings associates the name of an environment variable with a pointer to the storage location of the value
-var RequiredSettings = map[string]*string{
-	"API_GATEWAY_HOST": &vars.APIGatewayHost,
-	"PG_HOST":          &vars.DatabaseHost,
-	"PG_USER":          &vars.DatabaseUser,
-	"PG_PASS":          &vars.DatabaseUserPassword,
-	"SERVICE_PATH":     &vars.ServiceRoutePath,
-	// TODO: Add own required settings
-}
-
-// OptionalIntSettings associates the name of an environment variable with a pointer to the storage location of the
-// value. If the value is not found a default value will be loaded
-var OptionalIntSettings = map[string]*int{
-	"LISTEN_PORT":      &vars.ListenPort,
-	"PG_PORT":          &vars.DatabasePort,
-	"API_GATEWAY_PORT": &vars.APIGatewayPort,
-}
-
-// OptionalStringSettings associates the name of an environment variable with a pointer to the storage location of the
-// value. If the value is not found a default value will be loaded
-var OptionalStringSettings = map[string]*string{
-	"SCOPE_FILE_LOCATION": &vars.ScopeConfigurationPath,
-}
-
-/*
-Initialization Step 1 - Flag Creation
-
-This initialization step will create a boolean flag which may trigger a healthcheck later on
-*/
+// Initialization: configure the logger level and format
 func init() {
-	// Create a new boolean variable flag which uses an existing variable pointer for the value to be assigned
-	flag.BoolVar(
-		&vars.ExecuteHealthcheck,
-		"healthcheck",
-		false,
-		"Run a healthcheck of the service which will check if the service can call itself and is correctly setup on the API gateway",
-	)
-	// Parse the created flags into their variables
-	flag.Parse()
+	// set up the time format and the error logging
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
+
+	// now read the environment variable loglevel
+	logLevel, _ := os.LookupEnv("LOG_LEVEL")
+	logLevel = strings.ToLower(logLevel)
+	switch logLevel {
+	case "panic":
+		zerolog.SetGlobalLevel(zerolog.PanicLevel)
+		globals.HttpLogger = globals.HttpLogger.Level(zerolog.PanicLevel)
+		log.Log().Str("level", logLevel).Str("init-step", "configure-logger").Msg("configured global logger")
+		break
+	case "fatal":
+		zerolog.SetGlobalLevel(zerolog.FatalLevel)
+		globals.HttpLogger = globals.HttpLogger.Level(zerolog.FatalLevel)
+		log.Log().Str("level", logLevel).Str("initStep", "configure-logger").Msg("configured global logger")
+		break
+	case "error":
+		zerolog.SetGlobalLevel(zerolog.ErrorLevel)
+		globals.HttpLogger = globals.HttpLogger.Level(zerolog.ErrorLevel)
+		log.Log().Str("level", logLevel).Str("initStep", "configure-logger").Msg("configured global logger")
+		break
+	case "warn":
+		zerolog.SetGlobalLevel(zerolog.WarnLevel)
+		globals.HttpLogger = globals.HttpLogger.Level(zerolog.WarnLevel)
+		log.Log().Str("level", logLevel).Str("initStep", "configure-logger").Msg("configured global logger")
+		break
+	case "info":
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+		globals.HttpLogger = globals.HttpLogger.Level(zerolog.InfoLevel)
+		log.Log().Str("level", logLevel).Str("initStep", "configure-logger").Msg("configured global logger")
+		break
+	case "debug":
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+		globals.HttpLogger = globals.HttpLogger.Level(zerolog.DebugLevel)
+		log.Log().Str("level", logLevel).Str("initStep", "configure-logger").Msg("configured global logger")
+		break
+	case "trace":
+		zerolog.SetGlobalLevel(zerolog.TraceLevel)
+		globals.HttpLogger = globals.HttpLogger.Level(zerolog.TraceLevel)
+		log.Log().Str("level", logLevel).Str("initStep", "configure-logger").Msg("configured global logger")
+		break
+	default:
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+		globals.HttpLogger = globals.HttpLogger.Level(zerolog.InfoLevel)
+		log.Warn().Str("level", "info").Str("initStep", "configure-logger").Msg("configured global logger with default level `info`")
+		break
+	}
 }
 
-/*
-Initialization Step 2 - Logger Configuration
-
-This step will set up the logging library logrus for this microservice and set the correct logging level
-*/
+// initialization: environment variables as specified from the given path
 func init() {
-	// Check if a logging level was set in the environment variables
-	rawLoggingLevel, envFound := os.LookupEnv("CONFIG_LOGGING_LEVEL")
-	// If the logging level was not set use info as default level
-	if !envFound || (envFound && rawLoggingLevel == "") {
-		rawLoggingLevel = "info"
-	}
-	// Parse the raw value to a logging level which is understood by logrus
-	logrusLoggingLevel, err := log.ParseLevel(rawLoggingLevel)
-	// If an unknown logging level was supplied use the Info level as default level
-	if err != nil {
-		logrusLoggingLevel = log.InfoLevel
-	}
-	// Set the level for the logging library
-	log.SetLevel(logrusLoggingLevel)
-	// Set the formatter for the logging library
-	log.SetFormatter(
-		&log.TextFormatter{
-			// Display the full time stamp in the logs
-			FullTimestamp: true,
-			// Show the levels name fully, even though this may result in shifts between the log lines
-			DisableLevelTruncation: true,
-		},
-	)
-}
-
-/*
-Initialization Step 3 - Required environment variable check
-
-This initialization step will check the existence of the following variables and if the values are not empty strings:
-	- CONFIG_API_GATEWAY_HOST
-	- CONFIG_API_GATEWAY_ADMIN_PORT
-	- CONFIG_API_GATEWAY_SERVICE_PATH
-
-Furthermore, this step will use sensitive defaults on the following environment variables
-	- CONFIG_HTTP_LISTEN_PORT = 8000
-
-TODO: Add own required and optional variables to this function, if needed
-*/
-func init() {
-	logger := log.WithFields(
-		log.Fields{
-			"initStep":     3,
-			"initStepName": "CONFIGURATION_CHECK",
-		},
-	)
-	logger.Debug("Validating the required environment variables for their existence and if the variables are not empty")
-	// Check the required variables for their values
-	for envName, valuePointer := range RequiredSettings {
-		var err error
-		*valuePointer, err = utils.ReadEnvironmentVariable(envName)
-		if err != nil {
-			logger.WithError(err).Fatalf("The required environment variable '%s' is not set", envName)
-		}
-	}
-
-	// Now check the default integer variables if they exist and are convertible
-	for envName, valuePointer := range OptionalIntSettings {
-		stringValue, err := utils.ReadEnvironmentVariable(envName)
-		if err != nil || strings.TrimSpace(stringValue) == "" {
-			logger.Infof("Using default value '%d' for environment variable '%s'", *valuePointer, envName)
-		} else {
-			intValue, conversionError := strconv.Atoi(stringValue)
-			if conversionError != nil {
-				logger.WithError(conversionError).Warningf(
-					"Using default value '%d' for environment variable '%s'",
-					*valuePointer, envName,
-				)
-			} else {
-				*valuePointer = intValue
-			}
-		}
-	}
-
-	// Now check for the optional setting strings
-	for envName, valuePointer := range OptionalStringSettings {
-		stringValue, err := utils.ReadEnvironmentVariable(envName)
-		if err != nil || strings.TrimSpace(stringValue) == "" {
-			logger.Infof("Using default value '%s' for environment variavble '%s'", *valuePointer, envName)
-		} else {
-			*valuePointer = stringValue
-		}
-	}
-
-}
-
-/*
-Initialization Step 4 - Check the dependency connections
-
-This initialization step will check if all dependency containers are reachable.
-
-TODO: Add checks for new dependencies
-*/
-func init() {
-	// Create a logger for this step
-	logger := log.WithFields(
-		log.Fields{
-			"initStep":     4,
-			"initStepName": "DEPENDENCY_CONNECTION_CHECK",
-		},
-	)
-	// Check if the kong admin api is reachable
-	logger.Infof(
-		"Checking if the api gateway on the host '%s' is reachable on port '%d'", vars.APIGatewayHost,
-		vars.APIGatewayPort,
-	)
-	gatewayReachable := utils.PingHost(
-		vars.APIGatewayHost,
-		vars.APIGatewayPort, 10,
-	)
-	if !gatewayReachable {
-		logger.Fatalf(
-			"The api gateway on the host '%s' is not reachable on port '%d'", vars.APIGatewayHost,
-			vars.APIGatewayPort,
-		)
+	l := log.With().Str("initStep", "load-environment").Logger()
+	// check if the environment variables set a different location for the config
+	// file
+	l.Info().Msg("loading environment configuration")
+	envFileLocation, envSet := os.LookupEnv("ENVIRONMENT_CONFIGURATION")
+	var filePath string
+	if envSet {
+		filePath = envFileLocation
 	} else {
-		logger.Info("The api gateway is reachable via tcp")
+		filePath = "/res/environment.json5"
 	}
-	// Check if a connection to the postgres database is possible
-	logger.Info("Checking if the postgres database is reachable and the login data is valid")
-	postgresConnectionString := fmt.Sprintf(
-		"host=%s port=%d user=%s password=%s dbname=wisdom sslmode=disable",
-		vars.DatabaseHost, vars.DatabasePort, vars.DatabaseUser, vars.DatabaseUserPassword,
-	)
-	logger.Debugf("Built the follwoing connection string: '%s'", postgresConnectionString)
-	// Create a possible error object
-	var connectionError error
-	logger.Info("Opening the connection to the consumer database")
-	vars.PostgresConnection, connectionError = sql.Open("postgres", postgresConnectionString)
-	if connectionError != nil {
-		logger.WithError(connectionError).Fatal("Unable to connect to the consumer database.")
-	}
-	// Now ping the database to check if the connection is working
-	databasePingError := vars.PostgresConnection.Ping()
-	if databasePingError != nil {
-		logger.WithError(databasePingError).Fatal("Unable to ping to the consumer database.")
-	}
-	logger.Info("The connection to the consumer database was successfully established")
-}
-
-/**
-Initialization Step 5 - Load the scope setup for this service
-
-This initialization step will load the supplied scope-example.json file to get the information needed for checking the incoming
-requests for the correct scope
-*/
-func init() {
-	logger := log.WithFields(
-		log.Fields{
-			"initStep":     5,
-			"initStepName": "OAUTH2_SCOPE_CONFIGURATION",
-		},
-	)
-	logger.Infof("Reading the scope configuration file from '%s'", vars.ScopeConfigurationPath)
-	fileContents, err := ioutil.ReadFile(vars.ScopeConfigurationPath)
+	var environmentConfiguration structs.EnvironmentConfiguration
+	configurationContent, err := os.ReadFile(filePath)
 	if err != nil {
-		logger.WithError(err).Fatal("Unable to read the contents of the scope configuration file")
+		log.Fatal().Err(err).Msg("unable to read environment configuration")
 	}
-	logger.Debugf("Read the following file contents: %s", fileContents)
-	logger.Debug("Parsing the file contents into the scope configuration for the service")
-
-	parserError := json.Unmarshal(fileContents, &vars.ScopeConfiguration)
-	if parserError != nil {
-		logger.WithError(parserError).Fatalf("Unable to parse the contents of '%s'", vars.ScopeConfigurationPath)
-	}
-
-	// now send the read configuration to the auth service to authenticate users for this service
-	authServiceUrl := fmt.Sprintf("http://%s:8000/auth/scopes/__new", vars.APIGatewayHost)
-
-	request, err := http.NewRequest("PUT", authServiceUrl, bytes.NewBuffer(fileContents))
-	request.Header.Set("Content-Type", "application/json")
-
-	client := &http.Client{}
-	response, err := client.Do(request)
+	err = json5.Unmarshal(configurationContent, &environmentConfiguration)
 	if err != nil {
-		logger.WithError(err).Fatal("Unable to send the scope data to the authorization service")
+		log.Fatal().Err(err).Msg("unable to unmarshal the environment configuration")
 	}
-	defer response.Body.Close()
-
-	if response.StatusCode != 200 {
-		logger.Fatal("Scope was not accepted by the authorization service")
-	}
-}
-
-/*
-Initialization Step 6 - Register service in upstream of the microservice and setup routing
-
-This initialization step will use the admin api of the api gateway to add itself to the upstream for the service
-instances. If no upstream is set up, one will be created automatically
-*/
-func init() {
-	logger := log.WithFields(
-		log.Fields{
-			"initStep":     6,
-			"initStepName": "GATEWAY_SET_UP",
-		},
-	)
-	if !vars.ExecuteHealthcheck {
-		setupErr := gateway.SetUpGatewayConnection(vars.APIGatewayHost, vars.APIGatewayPort, false)
-		if setupErr != nil {
-			logger.WithError(setupErr).Fatal("Unable to set up the connection to the api gateway")
-		}
-		upstreamSetUp, err := gateway.IsUpstreamSetUp(vars.ServiceName)
-		if err != nil {
-			logger.WithError(err).Fatal("Unable to check if the service already has a upstream set up")
-		}
-		if !upstreamSetUp {
-			upstreamCreated, err := gateway.CreateNewUpstream(vars.ServiceName)
-			if err != nil {
-				logger.WithError(err).Fatal("Unable to create a new upstream for this microservice")
-			}
-			if !upstreamCreated {
-				logger.Fatal("The upstream was not created even though no error occurred")
+	l.Info().Msg("successfully parsed environment configuration")
+	l.Info().Msg("loading required environment variables")
+	// now iterate through the required environment variables
+	for _, key := range environmentConfiguration.RequiredEnvironmentVariables {
+		l.Debug().Str("env", key).Msg("reading required environment variable")
+		value, isSet := os.LookupEnv(key)
+		if !isSet {
+			// since the key was not found look for a docker secret containing the value
+			key = key + "_FILE"
+			path, isSet := os.LookupEnv(key)
+			if !isSet {
+				l.Fatal().Err(vars.ErrEnvironmentVariableNotFound).Msgf(
+					"the environment variable '%s' is required but not set")
 			} else {
-				logger.Info("Successfully created a new upstream for the microservice")
-			}
-		} else {
-			logger.Info("The service already has a upstream entry in the database")
-		}
-
-		// Get the local ip address to add it to the upstream targets
-		localIPAddress, _ := utils.LocalIPv4Address()
-		targetAddress := fmt.Sprintf("%s:%d", localIPAddress, vars.ListenPort)
-
-		targetInUpstream, err := gateway.IsAddressInUpstreamTargetList(targetAddress, vars.ServiceName)
-		if err != nil {
-			logger.WithError(err).Fatal(
-				"Unable to check if the address of the container is listed in the upstream of" +
-					" the microservice",
-			)
-		}
-		if !targetInUpstream {
-			// Build the target address
-
-			targetAdded, err := gateway.CreateTargetInUpstream(targetAddress, vars.ServiceName)
-			if err != nil {
-				logger.WithError(err).Fatal("Unable to add the address of the container to the upstream of the microservice")
-			}
-			if !targetAdded {
-				logger.Fatal("The target address was not added to the upstream of the service")
-			} else {
-				logger.Infof("Added the microservices ip address and listen port to the upstream targets")
-			}
-		} else {
-			logger.Info("The microservices ip address and listen port are already listed as upstream targets")
-		}
-
-		serviceSetUp, err := gateway.IsServiceSetUp(vars.ServiceName)
-		if err != nil {
-			logger.WithError(err).Fatal(
-				"Unable to check if the microservice already has a service configured on the" +
-					" gateway",
-			)
-		}
-		if !serviceSetUp {
-			logger.Warning(
-				"No service was previously set up for this microservice. " +
-					"Creating a new service on the api gateway",
-			)
-
-			// Create a new service using the previously created/existing upstream as target of the service
-			serviceCreated, err := gateway.CreateService(vars.ServiceName, vars.ServiceName)
-			if err != nil {
-				logger.WithError(err).Fatal("Unable to create a new service for the microservice")
-			}
-			if !serviceCreated {
-				logger.Fatal("The service has not been created due to an unknown error")
-			} else {
-				logger.Info("Successfully created a new service entry for the microservice")
-			}
-		} else {
-			logger.Info("The microservice already has a service entry set up")
-		}
-
-		routeSetUp, err := gateway.ServiceHasRouteSetUp(vars.ServiceName)
-		if err != nil {
-			logger.WithError(err).Fatal("Unable to check if the service of the microservice has any routes configured")
-		}
-		if !routeSetUp {
-			routeCreated, err := gateway.CreateNewRoute(vars.ServiceName, vars.ServiceRoutePath)
-			if err != nil {
-				logger.WithError(err).Fatal("Unable to create a route for the service")
-			}
-			if !routeCreated {
-				logger.Fatal("The route was not created due to an unknown reason")
-			} else {
-				logger.Info("The route was successfully created for this microservice")
-			}
-		} else {
-			routeWithPathExists, err := gateway.ServiceHasRouteWithPathSetUp(vars.ServiceName, vars.ServiceRoutePath)
-			if err != nil {
-				logger.WithError(err).Fatal(
-					"Unable to check if the service of the microservice has a route configured" +
-						" matching the path supplied by the environment",
-				)
-			}
-			if !routeWithPathExists {
-				routeCreated, err := gateway.CreateNewRoute(vars.ServiceName, vars.ServiceRoutePath)
+				// since a file contains the value of the environment variable read the contents of the file
+				file, err := os.Open(path)
 				if err != nil {
-					logger.WithError(err).Fatal("Unable to create a route for the service")
+					l.Fatal().Err(err).Msg("unable to open docker secret file")
 				}
-				if !routeCreated {
-					logger.Fatal("The route was not created due to an unknown reason")
-				}
-			} else {
-				logger.Info("The requested route already exists")
+				valueBytes, err := io.ReadAll(file)
+				value := string(valueBytes)
+				l.Debug().Str("env", key).Msg("found value for environment variable in docker secret")
+				globals.Environment[key] = value
 			}
+
+		} else {
+			l.Debug().Str("env", key).Msg("found value for environment variable")
+			globals.Environment[key] = value
 		}
+	}
+	l.Info().Msg("successfully loaded required environment variables")
+
+	// now iterate through the optional environment variables
+	for _, optionalEnvironmentVariable := range environmentConfiguration.OptionalEnvironmentVariables {
+		l.Debug().Str("env", optionalEnvironmentVariable.EnvironmentKey).Msg("reading optional environment variable")
+		value, isSet := os.LookupEnv(optionalEnvironmentVariable.EnvironmentKey)
+		if !isSet {
+			l.Debug().Str("env", optionalEnvironmentVariable.EnvironmentKey).Msg("environment variable not found")
+			l.Info().Str("env", optionalEnvironmentVariable.EnvironmentKey).Msg("using default value")
+			globals.Environment[optionalEnvironmentVariable.EnvironmentKey] = optionalEnvironmentVariable.DefaultValue
+		} else {
+			l.Debug().Str("env", optionalEnvironmentVariable.EnvironmentKey).Msg("found value for environment variable")
+			globals.Environment[optionalEnvironmentVariable.EnvironmentKey] = value
+		}
+	}
+
+	l.Info().Msg("finished loading of the optional environment variables")
+}
+
+// initialization: load the http errors
+func init() {
+	l := log.With().Str("initStep", "parse-http-errors").Logger()
+	l.Info().Msg("reading http error file")
+	errorFilePath := globals.Environment["ERROR_FILE_LOCATION"]
+	fileContents, err := os.ReadFile(errorFilePath)
+	if err != nil {
+		l.Fatal().Err(err).Msg("unable to read http error configuration")
+	}
+	l.Info().Msg("successfully read the http error file contents")
+	l.Info().Msg("unmarshalling http error file contents")
+	var availableErrors []structs.RequestError
+	err = json5.Unmarshal(fileContents, &availableErrors)
+	if err != nil {
+		log.Fatal().Err(err).Msg("unable to unmarshal the request errors")
+	}
+	l.Info().Msg("successfully unmarshalled http error file contents")
+
+	// now iterate through the errors and add them to the mapping
+	l.Info().Msg("creating request error mapping")
+	for _, requestError := range availableErrors {
+		l.Debug().Str("error", requestError.ErrorCode).Msg("creating map entry")
+		requestErrors.RequestErrors[requestError.ErrorCode] = requestError
+	}
+	l.Info().Msg("request errors successfully mapped")
+}
+
+// initialization: load the scope configuration file
+func init() {
+	l := log.With().Str("initStep", "parse-oauth-scope").Logger()
+	l.Info().Msg("reading file contents of scope file")
+	scopeFilePath := globals.Environment["SCOPE_FILE_LOCATION"]
+	fileContents, err := os.ReadFile(scopeFilePath)
+	if err != nil {
+		l.Fatal().Err(err).Msg("unable to read scope file configuration")
+	}
+	l.Info().Msg("successfully read the scope file contents")
+	l.Info().Msg("unmarshalling the scope file contents")
+	err = json5.Unmarshal(fileContents, &globals.ScopeConfiguration)
+	if err != nil {
+		l.Fatal().Err(err).Msg("unable to unmarshal the scope file")
+	}
+	l.Info().Msg("scope configuration successfully unmarshalled")
+}
+
+// initialization: connect to the database
+func init() {
+	l := log.With().Str("initStep", "connect-postgres").Logger()
+
+	// try to ping the database server to ensure a connection can be opened
+	l.Info().Msg("pinging the database host")
+	reachable := wisdomUtils.PingHost(globals.Environment["PG_HOST"], globals.Environment["PG_PORT"], 5)
+	if !reachable {
+		l.Fatal().Msg("unable to ping the postgres database")
+	}
+	l.Info().Msg("successfully pinged the database host")
+	// now try to build the connection string
+	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=wisdom sslmode=disable",
+		globals.Environment["PG_HOST"], globals.Environment["PG_PORT"], globals.Environment["PG_USER"],
+		globals.Environment["PG_PASS"])
+
+	// now try to connect to the database
+	l.Info().Msg("opening connection to the database")
+	var err error
+	connections.DbConnection, err = sql.Open("postgres", dsn)
+	if err != nil {
+		l.Fatal().Err(err).Msg("error during database connection")
+	}
+
+	// to test if the connection was successful, ping the database using the function provided by sql
+	err = connections.DbConnection.Ping()
+	if err != nil {
+		l.Fatal().Err(err).Msg("error during database pings")
+	}
+	l.Info().Msg("database connection established")
+}
+
+// initialization: load sql queries
+func init() {
+	l := log.With().Str("initStep", "load-queries").Logger()
+	l.Info().Msg("loading sql queries")
+	l.Debug().Msgf("using path: %s", globals.Environment["QUERY_FILE_LOCATION"])
+	var err error
+	globals.Queries, err = dotsql.LoadFromFile(globals.Environment["QUERY_FILE_LOCATION"])
+	if err != nil {
+		l.Fatal().Err(err).Msg("unable to load queries used by the service")
 	}
 }
