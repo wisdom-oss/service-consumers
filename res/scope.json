@@ -1,6 +1,0 @@
-{
-  "$schema": "https://raw.githubusercontent.com/wisdom-oss/documentation/main/schemas/service-scope.schema.json",
-  "name": "Consumer Management",
-  "description": "Allow the user to add, edit and delete consumers from the database",
-  "scopeStringValue": "consumer-management"
-}

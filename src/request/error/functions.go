@@ -3,52 +3,64 @@ package requestErrors
 import (
 	"encoding/json"
 	"fmt"
-	log "github.com/sirupsen/logrus"
+	"github.com/pkg/errors"
+	"github.com/wisdom-oss/microservice-utils"
 	"microservice/structs"
-	"microservice/utils"
 	"microservice/vars"
+	"microservice/vars/globals"
 	"net/http"
 )
 
-// BuildRequestError creates a RequestError which can be sent in case of an error which has been triggered.
-//The code for an error is defined as constant in the `request/error/errors.go` file
-func BuildRequestError(code string) (*structs.RequestError, error) {
-	// Check if the error code is configured in the respective arrays
-	if !utils.MapContainsKey(titles, code) ||
-		!utils.MapContainsKey(descriptions, code) ||
-		!utils.MapContainsKey(httpCodes, code) {
+// RequestErrors contains all request errors which were read at the starup
+// of the service
+var RequestErrors map[string]structs.RequestError = make(map[string]structs.RequestError)
+
+func GetRequestError(errorCode string) (*structs.ErrorResponse, error) {
+	if !wisdomUtils.MapHasKey(RequestErrors, errorCode) {
 		return nil, vars.ErrHttpErrorNotFound
 	}
-	// Now build the request error struct and return it
-	return &structs.RequestError{
-		HttpStatus:       httpCodes[code],
-		HttpError:        http.StatusText(httpCodes[code]),
-		ErrorCode:        fmt.Sprintf("%s.%s", vars.ServiceName, code),
-		ErrorTitle:       titles[code],
-		ErrorDescription: descriptions[code],
-	}, nil
-}
-
-// RespondWithRequestError responds with an already built request error
-func RespondWithRequestError(requestError *structs.RequestError, responseWriter http.ResponseWriter) {
-	// Set the content type of the response to "text/json"
-	responseWriter.Header().Set("Content-Type", "text/json")
-	// Write the http status of the request error to the response
-	responseWriter.WriteHeader(requestError.HttpStatus)
-	// Now encode the request error to json and write it to the response
-	encodingError := json.NewEncoder(responseWriter).Encode(requestError)
-	if encodingError != nil {
-		log.WithField("package", "request/error").WithError(encodingError).Error(
-			"unable to encode the struct into json")
+	// since the key exists in the request errors map get the request error
+	requestError := RequestErrors[errorCode]
+	// now get the text for the http error code
+	httpText := http.StatusText(requestError.HttpCode)
+	if httpText == "" {
+		return &structs.ErrorResponse{
+			HttpStatus:       requestError.HttpCode,
+			HttpError:        "Unknown HTTP Code",
+			ErrorCode:        fmt.Sprintf("%s.%s", globals.ServiceName, errorCode),
+			ErrorTitle:       requestError.ErrorTitle,
+			ErrorDescription: requestError.ErrorDescription,
+		}, nil
+	} else {
+		return &structs.ErrorResponse{
+			HttpStatus:       requestError.HttpCode,
+			HttpError:        httpText,
+			ErrorCode:        errorCode,
+			ErrorTitle:       requestError.ErrorTitle,
+			ErrorDescription: requestError.ErrorDescription,
+		}, nil
 	}
 }
 
-// RespondWithInternalError creates an Internal Server Error which contains the error thrown in the microservice as
-// part of the error description
-func RespondWithInternalError(reason error, responseWriter http.ResponseWriter) {
-	requestError, _ := BuildRequestError(InternalError)
-	// Put the reason into the description of the error
-	requestError.ErrorDescription = fmt.Sprintf("%s: %s", requestError.ErrorDescription, reason)
-	// Now send the response
-	RespondWithRequestError(requestError, responseWriter)
+// WrapInternalError wraps an internal error and adds the error to the response
+func WrapInternalError(err error) (*structs.ErrorResponse, error) {
+	response, err := GetRequestError("INTERNAL_ERROR")
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to create internal error")
+	}
+	response.ErrorDescription += fmt.Sprintf("%s", err)
+	return response, nil
+}
+
+// SendError takes the request error and sends it back to the client
+func SendError(errorResponse *structs.ErrorResponse, w http.ResponseWriter) {
+	// set the content-type header to json
+	w.Header().Set("Content-Type", "text/json")
+	// now send the http code to the client
+	w.WriteHeader(errorResponse.HttpStatus)
+	// now write out the response
+	err := json.NewEncoder(w).Encode(errorResponse)
+	if err != nil {
+		globals.HttpLogger.Err(err).Msg("unable to send error response")
+	}
 }

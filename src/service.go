@@ -1,49 +1,41 @@
 package main
 
 import (
-	context2 "context"
 	"fmt"
-	"microservice/request/middleware"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/httplog"
+	"github.com/wisdom-oss/microservice-middlewares"
+	"microservice/request/routes"
+	"microservice/vars/globals"
 	"net/http"
 	"os"
 	"os/signal"
 	"time"
 
-	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
-
-	"microservice/request/routes"
-	"microservice/vars"
 )
 
 /*
 This function is used to set up the http server for the microservice
 */
 func main() {
-	if vars.ExecuteHealthcheck {
-		healthcheckUrl := fmt.Sprintf("http://localhost:%d/ping", vars.ListenPort)
-		response, err := http.Get(healthcheckUrl)
-		if err != nil {
-			os.Exit(1)
-		}
-		if response.StatusCode != 204 {
-			os.Exit(1)
-		}
-		return
-	}
 
 	// Set up the routing of the different functions
-	router := mux.NewRouter()
-	router.Use(middleware.AuthorizationCheck)
-	router.HandleFunc("/ping", routes.PingHandler)
-	router.HandleFunc("/{consumer_id}", routes.UpdateConsumer).Methods("PATCH")
-	router.HandleFunc("/{consumer_id}", routes.DeleteConsumer).Methods("DELETE")
-	router.HandleFunc("/", routes.CreateConsumer).Methods("PUT")
-	router.HandleFunc("/", routes.GetConsumers).Methods("GET")
-
+	router := chi.NewRouter()
+	router.Use(middleware.RequestID)
+	router.Use(middleware.RealIP)
+	router.Use(httplog.Handler(globals.HttpLogger))
+	router.Use(middleware.Heartbeat("/healthcheck"))
+	router.Use(wisdomMiddleware.GatewayConfigInterceptor(globals.Environment["GATEWAY_CONFIG_LOCATION"], "/_gatewayConfig"))
+	router.Use(wisdomMiddleware.Authorization([]string{"/healthcheck", "/_gatewayConfig"}, globals.ScopeConfiguration.ScopeValue))
+	router.Get("/", routes.GetConsumers)
+	router.Put("/", routes.CreateConsumer)
+	router.Patch("/{consumerID}", routes.UpdateConsumer)
+	router.Delete("/{consumerID}", routes.DeleteConsumer)
 	// Configure the HTTP server
 	server := &http.Server{
-		Addr:         fmt.Sprintf("0.0.0.0:%d", vars.ListenPort),
+		Addr:         fmt.Sprintf("0.0.0.0:%s", globals.Environment["LISTEN_PORT"]),
 		WriteTimeout: time.Second * 600,
 		ReadTimeout:  time.Second * 600,
 		IdleTimeout:  time.Second * 600,
@@ -65,19 +57,4 @@ func main() {
 	// Block further code execution until the shutdown signal was received
 	<-cancelSignal
 
-	context, cancel := context2.WithTimeout(context2.Background(), time.Second*15)
-	defer cancel()
-
-	go func() {
-		err := server.Shutdown(context)
-		if err != nil {
-			log.WithError(err).Fatal("An error occurred while stopping the http server")
-		}
-		log.Info("Closing the database connection")
-		dbCloseErr := vars.PostgresConnection.Close()
-		if dbCloseErr != nil {
-			log.WithError(err).Fatal("An error occurred while closing the connection to the database")
-		}
-	}()
-	log.Info("Shutting down the microservice...")
 }
