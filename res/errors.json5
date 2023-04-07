@@ -18,6 +18,12 @@
     "title": "Internal Application Error",
     "description": "An unexpected error occurred during the handling of the request.",
     "httpCode": 500
-  }
+  },
   // and this line. you may extend below this line
+  {
+    "code": "INVALID_USAGE_AMOUNT",
+    "title": "Invalid Usage Amount",
+    "description": "The usage amount supplied is not a valid integer",
+    "httpCode": 400
+  }
 ]
