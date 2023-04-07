@@ -29,7 +29,7 @@ type Consumer struct {
 
 // IncomingConsumer contains the data which is for updating or creating a consumer
 type IncomingConsumer struct {
-	Name      string  `json:"name"`
-	Latitude  float64 `json:"lat"`
-	Longitude float64 `json:"long"`
+	Name      *string  `json:"name"`
+	Latitude  *float64 `json:"lat"`
+	Longitude *float64 `json:"long"`
 }
