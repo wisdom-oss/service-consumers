@@ -25,5 +25,11 @@
     "title": "Invalid Usage Amount",
     "description": "The usage amount supplied is not a valid integer",
     "httpCode": 400
+  },
+  {
+    "code": "DUPLICATE_CONSUMER",
+    "title": "Duplicate Consumer",
+    "description": "The consumer already exists",
+    "httpCode": 409
   }
 ]

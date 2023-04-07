@@ -30,7 +30,7 @@ func main() {
 	router.Use(wisdomMiddleware.GatewayConfigInterceptor(globals.Environment["GATEWAY_CONFIG_LOCATION"], "/_gatewayConfig"))
 	router.Use(wisdomMiddleware.Authorization([]string{"/healthcheck", "/_gatewayConfig"}, globals.ScopeConfiguration.ScopeValue))
 	router.Get("/", routes.GetConsumers)
-
+	router.Put("/", routes.CreateConsumer)
 	// Configure the HTTP server
 	server := &http.Server{
 		Addr:         fmt.Sprintf("0.0.0.0:%s", globals.Environment["LISTEN_PORT"]),
