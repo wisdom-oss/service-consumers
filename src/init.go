@@ -9,7 +9,6 @@ import (
 	"github.com/rs/zerolog/pkgerrors"
 	"github.com/titanous/json5"
 	"github.com/wisdom-oss/microservice-utils"
-	"io"
 	requestErrors "microservice/request/error"
 	"microservice/structs"
 	"microservice/vars"
@@ -104,21 +103,19 @@ func init() {
 		value, isSet := os.LookupEnv(key)
 		if !isSet {
 			// since the key was not found look for a docker secret containing the value
-			key = key + "_FILE"
-			path, isSet := os.LookupEnv(key)
+			fileKey := key + "_FILE"
+			value, isSet := os.LookupEnv(fileKey)
 			if !isSet {
 				l.Fatal().Err(vars.ErrEnvironmentVariableNotFound).Msgf(
-					"the environment variable '%s' is required but not set")
+					"the environment variable '%s' is required but not set and no file present", key)
 			} else {
-				// since a file contains the value of the environment variable read the contents of the file
-				file, err := os.Open(path)
-				if err != nil {
-					l.Fatal().Err(err).Msg("unable to open docker secret file")
-				}
-				valueBytes, err := io.ReadAll(file)
-				value := string(valueBytes)
 				l.Debug().Str("env", key).Msg("found value for environment variable in docker secret")
-				globals.Environment[key] = value
+				// read the file
+				fileContent, err := os.ReadFile(value)
+				if err != nil {
+					l.Fatal().Err(err).Msgf("unable to read file '%s'", value)
+				}
+				globals.Environment[key] = string(fileContent)
 			}
 
 		} else {
