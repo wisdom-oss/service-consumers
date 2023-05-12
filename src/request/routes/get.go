@@ -3,6 +3,7 @@ package routes
 import (
 	"database/sql"
 	"encoding/json"
+	"github.com/lib/pq"
 	geojson "github.com/paulmach/go.geojson"
 	requestErrors "microservice/request/error"
 	"microservice/structs"
@@ -57,7 +58,7 @@ func GetConsumers(w http.ResponseWriter, r *http.Request) {
 		consumerRows, queryError = globals.Queries.Query(
 			connections.DbConnection,
 			"get-consumers-by-usage-id-area",
-			usageAbove, consumerIDs, areaFilter)
+			usageAbove, consumerIDs, pq.Array(areaFilter))
 		break
 	case usageAboveSet && consumerIdSet && !areaFilterSet:
 		l.Info().Str("filters", "usage,consumerID").Msg("querying database")
@@ -71,14 +72,14 @@ func GetConsumers(w http.ResponseWriter, r *http.Request) {
 		consumerRows, queryError = globals.Queries.Query(
 			connections.DbConnection,
 			"get-consumers-by-usage-area",
-			usageAbove, areaFilter)
+			usageAbove, pq.Array(areaFilter))
 		break
 	case !usageAboveSet && consumerIdSet && areaFilterSet:
 		l.Info().Str("filters", "consumerID,areaFilter").Msg("querying database")
 		consumerRows, queryError = globals.Queries.Query(
 			connections.DbConnection,
 			"get-consumers-by-id-area",
-			consumerIDs, areaFilter)
+			consumerIDs, pq.Array(areaFilter))
 		break
 	case usageAboveSet && !consumerIdSet && !areaFilterSet:
 		l.Info().Str("filters", "usage").Msg("querying database")
@@ -92,7 +93,7 @@ func GetConsumers(w http.ResponseWriter, r *http.Request) {
 		consumerRows, queryError = globals.Queries.Query(
 			connections.DbConnection,
 			"get-consumers-by-area",
-			areaFilter)
+			pq.Array(areaFilter))
 		break
 	case !usageAboveSet && consumerIdSet && !areaFilterSet:
 		l.Info().Str("filters", "consumerID").Msg("querying database")
