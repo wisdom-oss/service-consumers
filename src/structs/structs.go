@@ -24,7 +24,7 @@ type ErrorResponse struct {
 type Consumer struct {
 	UUID     string           `json:"id"`
 	Name     string           `json:"name"`
-	Location geoJson.Geometry `json:"location"`
+	Location geoJson.Geometry `json:"geojson"`
 }
 
 // IncomingConsumer contains the data which is for updating or creating a consumer
