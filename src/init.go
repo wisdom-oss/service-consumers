@@ -98,6 +98,7 @@ func init() {
 	l.Info().Msg("successfully parsed environment configuration")
 	l.Info().Msg("loading required environment variables")
 	// now iterate through the required environment variables
+	// now iterate through the required environment variables
 	for _, key := range environmentConfiguration.RequiredEnvironmentVariables {
 		l.Debug().Str("env", key).Msg("reading required environment variable")
 		value, isSet := os.LookupEnv(key)
@@ -115,7 +116,7 @@ func init() {
 				if err != nil {
 					l.Fatal().Err(err).Msgf("unable to read file '%s'", value)
 				}
-				globals.Environment[key] = string(fileContent)
+				globals.Environment[key] = strings.TrimSpace(string(fileContent))
 			}
 
 		} else {
