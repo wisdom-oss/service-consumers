@@ -3,7 +3,7 @@ package routes
 import (
 	"database/sql"
 	"encoding/json"
-	geojson "github.com/paulmach/go.geojson"
+	"github.com/blockloop/scan/v2"
 	requestErrors "microservice/request/error"
 	"microservice/structs"
 	"microservice/vars/globals"
@@ -130,35 +130,23 @@ func GetConsumers(w http.ResponseWriter, r *http.Request) {
 	}(consumerRows)
 
 	// now iterate through the consumer rows and write the results to an array
-	var consumers []structs.Consumer
-	for consumerRows.Next() {
-		var id, name string
-		var location geojson.Geometry
-
-		err := consumerRows.Scan(&id, &name, &location)
-		if err != nil {
-			l.Error().Err(err).Msg("unable to parse results from query")
-			e, _ := requestErrors.WrapInternalError(err)
-			requestErrors.SendError(e, w)
-			return
-		}
-
-		consumers = append(consumers, structs.Consumer{
-			UUID:     id,
-			Name:     name,
-			Location: location,
-		})
-	}
+	var dbConsumers []structs.DbConsumer
+	err := scan.Rows(&dbConsumers, consumerRows)
 
 	// if the length is 0 there are no consumers matching the filters
-	if len(consumers) == 0 {
+	if len(dbConsumers) == 0 {
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 
+	var consumers []structs.Consumer
+	for _, c := range dbConsumers {
+		consumers = append(consumers, c.ToConsumer())
+	}
+
 	// now return the collected data
 	w.Header().Set("Content-Type", "application/json")
-	err := json.NewEncoder(w).Encode(consumers)
+	err = json.NewEncoder(w).Encode(consumers)
 	if err != nil {
 		l.Error().Err(err).Msg("unable to send response")
 		e, _ := requestErrors.WrapInternalError(err)

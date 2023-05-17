@@ -22,14 +22,17 @@ type ErrorResponse struct {
 // Consumer is a struct which is used to serialize the query outputs from the
 // database
 type Consumer struct {
-	UUID     string           `json:"id"`
-	Name     string           `json:"name"`
-	Location geoJson.Geometry `json:"location"`
+	UUID                 string                 `json:"id"`
+	Name                 string                 `json:"name"`
+	Location             geoJson.Geometry       `json:"location"`
+	UsageType            *string                `json:"usageType"`
+	AdditionalProperties map[string]interface{} `json:"additionalProperties"`
 }
 
 // IncomingConsumer contains the data which is for updating or creating a consumer
 type IncomingConsumer struct {
-	Name      *string  `json:"name"`
-	Latitude  *float64 `json:"lat"`
-	Longitude *float64 `json:"long"`
+	Name                 *string                 `json:"name"`
+	Coordinates          *[2]float64             `json:"coordinates"`
+	UsageType            *string                 `json:"usageType"`
+	AdditionalProperties *map[string]interface{} `json:"additionalProperties"`
 }
