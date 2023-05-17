@@ -80,6 +80,18 @@ FROM
 WHERE
     id = any($1);
 
+-- name: get-consumer-by-id
+SELECT
+    id,
+    name,
+    ST_ASGeoJSON(location) AS location,
+    usage_type,
+    additional_properties
+FROM
+    consumers.consumers
+WHERE
+        id = $1::uuid;
+
 -- name: get-consumers-by-area
 SELECT
     id,
@@ -134,10 +146,43 @@ UPDATE
     consumers.consumers
 SET
     location = st_makepoint($1, $2)
-WHERE id = $3;
+WHERE
+    id = $3;
+
+-- name: update-consumer-usage-type
+UPDATE
+    consumers.consumers
+SET
+    usage_type = $1
+WHERE
+    id = $2;
+
+-- name: update-consumer-additional-properties
+UPDATE
+    consumers.consumers
+SET
+    additional_properties = $1::jsonb
+WHERE
+    id = $2;
 
 -- name: delete-consumer
 DELETE FROM
    consumers.consumers
+WHERE
+    id = $1;
+
+-- name: get-consumer-type-id
+SELECT
+    id::text
+FROM
+    water_usage.usage_types
+WHERE
+    external_identifier = $1;
+
+-- name: get-consumer-type-external-identifier
+SELECT
+    external_identifier
+FROM
+    water_usage.usage_types
 WHERE
     id = $1;

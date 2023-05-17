@@ -3,8 +3,8 @@ package routes
 import (
 	"encoding/json"
 	"errors"
+	"github.com/blockloop/scan/v2"
 	"github.com/lib/pq"
-	geojson "github.com/paulmach/go.geojson"
 	requestErrors "microservice/request/error"
 	"microservice/structs"
 	"microservice/vars/globals"
@@ -25,9 +25,46 @@ func CreateConsumer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var usageType *string
+	if newConsumerData.UsageType != nil {
+		// try to determine the uuid of the usage type
+		usageTypeRow, err := globals.Queries.QueryRow(connections.DbConnection, "get-consumer-type-id", newConsumerData.UsageType)
+		if err != nil {
+			l.Error().Err(err).Msg("failed to execute the update query for the usage type")
+			e, _ := requestErrors.WrapInternalError(err)
+			requestErrors.SendError(e, w)
+			return
+		}
+		err = usageTypeRow.Scan(&usageType)
+		if err != nil {
+			l.Error().Err(err).Msg("failed to execute the update query for the usage type")
+			e, _ := requestErrors.WrapInternalError(err)
+			requestErrors.SendError(e, w)
+			return
+		}
+	} else {
+		usageType = nil
+	}
+
+	var jsonString *string
+	if newConsumerData.AdditionalProperties != nil {
+		jsonBytes, err := json.Marshal(newConsumerData.AdditionalProperties)
+		if err != nil {
+			l.Error().Err(err).Msg("failed to marshal the additional properties")
+			e, _ := requestErrors.WrapInternalError(err)
+			requestErrors.SendError(e, w)
+			return
+		}
+		s := string(jsonBytes)
+		jsonString = &s
+	} else {
+		jsonString = nil
+	}
+
 	// now execute the insertion query
-	consumerIDRow, err := globals.Queries.QueryRow(connections.DbConnection, "insert-consumer",
-		newConsumerData.Name, newConsumerData.Latitude, newConsumerData.Longitude)
+	consumerIDRow, err := globals.Queries.Query(connections.DbConnection, "insert-consumer",
+		newConsumerData.Name, newConsumerData.Coordinates[0], newConsumerData.Coordinates[1],
+		usageType, jsonString)
 	if err != nil {
 		var pqError *pq.Error
 		errors.As(err, &pqError)
@@ -61,7 +98,7 @@ func CreateConsumer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// now get the consumer from the database
-	consumerRow, err := globals.Queries.QueryRow(connections.DbConnection, "get-consumer-by-id", consumerID)
+	consumerRow, err := globals.Queries.Query(connections.DbConnection, "get-consumer-by-id", consumerID)
 	if err != nil {
 		l.Error().Err(err).Msg("failed to execute the query to get the consumer")
 		e, _ := requestErrors.WrapInternalError(err)
@@ -69,11 +106,11 @@ func CreateConsumer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// now access the query results
-	var consumerName string
-	var consumerLocation geojson.Geometry
-	err = consumerRow.Scan(&consumerName, &consumerLocation)
+	var dbConsumer structs.DbConsumer
+	err = scan.Row(&dbConsumer, consumerRow)
+
 	if err != nil {
-		l.Error().Err(err).Msg("failed to scan the consumer from the row")
+		l.Error().Err(err).Msg("failed to parse the database returns")
 		e, _ := requestErrors.WrapInternalError(err)
 		requestErrors.SendError(e, w)
 		return
@@ -82,11 +119,15 @@ func CreateConsumer(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/json")
 	w.WriteHeader(http.StatusCreated)
 
-	err = json.NewEncoder(w).Encode(structs.Consumer{
-		UUID:     consumerID,
-		Name:     consumerName,
-		Location: consumerLocation,
-	})
+	consumer, err := dbConsumer.ToConsumer()
+	if err != nil {
+		l.Error().Err(err).Msg("failed to execute the query to get the consumer")
+		e, _ := requestErrors.WrapInternalError(err)
+		requestErrors.SendError(e, w)
+		return
+	}
+
+	err = json.NewEncoder(w).Encode(consumer)
 	if err != nil {
 		l.Error().Err(err).Msg("failed to encode the consumer data")
 	}

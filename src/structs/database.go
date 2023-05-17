@@ -1,6 +1,10 @@
 package structs
 
-import geojson "github.com/paulmach/go.geojson"
+import (
+	geojson "github.com/paulmach/go.geojson"
+	"microservice/vars/globals"
+	"microservice/vars/globals/connections"
+)
 import "github.com/jackc/pgtype"
 
 // DbConsumer reflects a consumer stored in the database. It may
@@ -27,29 +31,47 @@ type DbConsumer struct {
 
 // ToConsumer converts a consumer entry stored in the database into an object
 // which may be json-encoded later on
-func (c DbConsumer) ToConsumer() Consumer {
+func (c DbConsumer) ToConsumer() (*Consumer, error) {
 	var uuid string
-	c.ID.AssignTo(&uuid)
+	err := c.ID.AssignTo(&uuid)
+	if err != nil {
+		return nil, err
+	}
 
 	var usageType *string
 	if c.UsageType.Status == pgtype.Present {
-		c.UsageType.AssignTo(usageType)
+		var usageTypeUUID string
+		err := c.UsageType.AssignTo(&usageTypeUUID)
+		if err != nil {
+			return nil, err
+		}
+		usageTypeRow, err := globals.Queries.QueryRow(connections.DbConnection, "get-consumer-type-external-identifier", usageTypeUUID)
+		if err != nil {
+			return nil, err
+		}
+		err = usageTypeRow.Scan(&usageType)
+		if err != nil {
+			return nil, err
+		}
 	} else {
 		usageType = nil
 	}
 
 	var additionalProperties map[string]interface{}
 	if c.AdditionalProperties.Status == pgtype.Present {
-		c.AdditionalProperties.AssignTo(&additionalProperties)
+		err := c.AdditionalProperties.AssignTo(&additionalProperties)
+		if err != nil {
+			return nil, err
+		}
 	} else {
 		additionalProperties = nil
 	}
 
-	return Consumer{
+	return &Consumer{
 		UUID:                 uuid,
 		Name:                 c.Name,
 		Location:             c.Location,
 		UsageType:            usageType,
 		AdditionalProperties: additionalProperties,
-	}
+	}, nil
 }

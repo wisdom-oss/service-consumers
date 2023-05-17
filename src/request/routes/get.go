@@ -141,7 +141,8 @@ func GetConsumers(w http.ResponseWriter, r *http.Request) {
 
 	var consumers []structs.Consumer
 	for _, c := range dbConsumers {
-		consumers = append(consumers, c.ToConsumer())
+		consumer, _ := c.ToConsumer()
+		consumers = append(consumers, *consumer)
 	}
 
 	// now return the collected data
