@@ -3,8 +3,7 @@ package routes
 import (
 	"database/sql"
 	"encoding/json"
-	"github.com/lib/pq"
-	geojson "github.com/paulmach/go.geojson"
+	"github.com/blockloop/scan/v2"
 	requestErrors "microservice/request/error"
 	"microservice/structs"
 	"microservice/vars/globals"
@@ -58,28 +57,28 @@ func GetConsumers(w http.ResponseWriter, r *http.Request) {
 		consumerRows, queryError = globals.Queries.Query(
 			connections.DbConnection,
 			"get-consumers-by-usage-id-area",
-			usageAbove, pq.Array(consumerIDs), pq.Array(areaFilter))
+			usageAbove, consumerIDs, areaFilter)
 		break
 	case usageAboveSet && consumerIdSet && !areaFilterSet:
 		l.Info().Str("filters", "usage,consumerID").Msg("querying database")
 		consumerRows, queryError = globals.Queries.Query(
 			connections.DbConnection,
 			"get-consumers-by-usage-id",
-			usageAbove, pq.Array(consumerIDs))
+			usageAbove, consumerIDs)
 		break
 	case usageAboveSet && !consumerIdSet && areaFilterSet:
 		l.Info().Str("filters", "usage,areaFilter").Msg("querying database")
 		consumerRows, queryError = globals.Queries.Query(
 			connections.DbConnection,
 			"get-consumers-by-usage-area",
-			usageAbove, pq.Array(areaFilter))
+			usageAbove, areaFilter)
 		break
 	case !usageAboveSet && consumerIdSet && areaFilterSet:
 		l.Info().Str("filters", "consumerID,areaFilter").Msg("querying database")
 		consumerRows, queryError = globals.Queries.Query(
 			connections.DbConnection,
 			"get-consumers-by-id-area",
-			pq.Array(consumerIDs), pq.Array(areaFilter))
+			consumerIDs, areaFilter)
 		break
 	case usageAboveSet && !consumerIdSet && !areaFilterSet:
 		l.Info().Str("filters", "usage").Msg("querying database")
@@ -93,14 +92,14 @@ func GetConsumers(w http.ResponseWriter, r *http.Request) {
 		consumerRows, queryError = globals.Queries.Query(
 			connections.DbConnection,
 			"get-consumers-by-area",
-			pq.Array(areaFilter))
+			areaFilter)
 		break
 	case !usageAboveSet && consumerIdSet && !areaFilterSet:
 		l.Info().Str("filters", "consumerID").Msg("querying database")
 		consumerRows, queryError = globals.Queries.Query(
 			connections.DbConnection,
 			"get-consumers-by-id",
-			pq.Array(consumerIDs))
+			consumerIDs)
 		break
 	case !usageAboveSet && !consumerIdSet && !areaFilterSet:
 		l.Warn().Str("filters", "none").Msg("querying database without filters")
@@ -131,35 +130,24 @@ func GetConsumers(w http.ResponseWriter, r *http.Request) {
 	}(consumerRows)
 
 	// now iterate through the consumer rows and write the results to an array
-	var consumers []structs.Consumer
-	for consumerRows.Next() {
-		var id, name string
-		var location geojson.Geometry
-
-		err := consumerRows.Scan(&id, &name, &location)
-		if err != nil {
-			l.Error().Err(err).Msg("unable to parse results from query")
-			e, _ := requestErrors.WrapInternalError(err)
-			requestErrors.SendError(e, w)
-			return
-		}
-
-		consumers = append(consumers, structs.Consumer{
-			UUID:     id,
-			Name:     name,
-			Location: location,
-		})
-	}
+	var dbConsumers []structs.DbConsumer
+	err := scan.Rows(&dbConsumers, consumerRows)
 
 	// if the length is 0 there are no consumers matching the filters
-	if len(consumers) == 0 {
+	if len(dbConsumers) == 0 {
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 
+	var consumers []structs.Consumer
+	for _, c := range dbConsumers {
+		consumer, _ := c.ToConsumer()
+		consumers = append(consumers, *consumer)
+	}
+
 	// now return the collected data
 	w.Header().Set("Content-Type", "application/json")
-	err := json.NewEncoder(w).Encode(consumers)
+	err = json.NewEncoder(w).Encode(consumers)
 	if err != nil {
 		l.Error().Err(err).Msg("unable to send response")
 		e, _ := requestErrors.WrapInternalError(err)

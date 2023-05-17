@@ -2,8 +2,8 @@ package routes
 
 import (
 	"encoding/json"
+	"github.com/blockloop/scan/v2"
 	"github.com/go-chi/chi/v5"
-	geojson "github.com/paulmach/go.geojson"
 	requestErrors "microservice/request/error"
 	"microservice/structs"
 	"microservice/vars/globals"
@@ -36,9 +36,10 @@ func UpdateConsumer(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if newConsumerData.Latitude != nil && newConsumerData.Longitude != nil {
+	if newConsumerData.Coordinates != nil {
 		// now execute the update query
-		_, err := globals.Queries.Exec(connections.DbConnection, "update-consumer-location", newConsumerData.Latitude, newConsumerData.Longitude, consumerID)
+		_, err := globals.Queries.Exec(connections.DbConnection, "update-consumer-location", newConsumerData.Coordinates[0],
+			newConsumerData.Coordinates[1], consumerID)
 		if err != nil {
 			l.Error().Err(err).Msg("failed to execute the update query for the location")
 			e, _ := requestErrors.WrapInternalError(err)
@@ -47,33 +48,72 @@ func UpdateConsumer(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if newConsumerData.UsageType != nil {
+		// try to determine the uuid of the usage type
+		usageTypeRow, err := globals.Queries.QueryRow(connections.DbConnection, "get-consumer-type-id", newConsumerData.UsageType)
+		if err != nil {
+			l.Error().Err(err).Msg("failed to execute the update query for the usage type")
+			e, _ := requestErrors.WrapInternalError(err)
+			requestErrors.SendError(e, w)
+			return
+		}
+		var usageType string
+		err = usageTypeRow.Scan(&usageType)
+		if err != nil {
+			l.Error().Err(err).Msg("failed to execute the update query for the usage type")
+			e, _ := requestErrors.WrapInternalError(err)
+			requestErrors.SendError(e, w)
+			return
+		}
+		// now execute the update query
+		_, err = globals.Queries.Exec(connections.DbConnection, "update-consumer-usage-type", usageType, consumerID)
+		if err != nil {
+			l.Error().Err(err).Msg("failed to execute the update query for the usage type")
+			e, _ := requestErrors.WrapInternalError(err)
+			requestErrors.SendError(e, w)
+			return
+		}
+	}
+
+	if newConsumerData.AdditionalProperties != nil {
+		jsonBytes, err := json.Marshal(newConsumerData.AdditionalProperties)
+		if err != nil {
+			l.Error().Err(err).Msg("failed to marshal the additional properties")
+			e, _ := requestErrors.WrapInternalError(err)
+			requestErrors.SendError(e, w)
+			return
+		}
+		jsonString := string(jsonBytes)
+		_, err = globals.Queries.Exec(connections.DbConnection, "update-consumer-additional-properties", jsonString, consumerID)
+		if err != nil {
+			l.Error().Err(err).Msg("failed to execute the query to update the additional properties")
+			e, _ := requestErrors.WrapInternalError(err)
+			requestErrors.SendError(e, w)
+			return
+		}
+	}
+
 	// now get the consumer from the database
-	consumerRow, err := globals.Queries.QueryRow(connections.DbConnection, "get-consumer-by-id", consumerID)
+	consumerRow, err := globals.Queries.Query(connections.DbConnection, "get-consumer-by-id", consumerID)
 	if err != nil {
 		l.Error().Err(err).Msg("failed to execute the query to get the consumer")
 		e, _ := requestErrors.WrapInternalError(err)
 		requestErrors.SendError(e, w)
 		return
 	}
-	// now access the query results
-	var consumerName string
-	var consumerLocation geojson.Geometry
-	err = consumerRow.Scan(&consumerName, &consumerLocation)
+	var dbConsumer structs.DbConsumer
+	err = scan.Row(&dbConsumer, consumerRow)
+
+	w.Header().Set("Content-Type", "text/json")
+	w.WriteHeader(http.StatusOK)
+	consumer, err := dbConsumer.ToConsumer()
 	if err != nil {
-		l.Error().Err(err).Msg("failed to scan the consumer from the row")
+		l.Error().Err(err).Msg("failed to execute the query to get the consumer")
 		e, _ := requestErrors.WrapInternalError(err)
 		requestErrors.SendError(e, w)
 		return
 	}
-
-	w.Header().Set("Content-Type", "text/json")
-	w.WriteHeader(http.StatusOK)
-
-	err = json.NewEncoder(w).Encode(structs.Consumer{
-		UUID:     consumerID,
-		Name:     consumerName,
-		Location: consumerLocation,
-	})
+	err = json.NewEncoder(w).Encode(consumer)
 	if err != nil {
 		l.Error().Err(err).Msg("failed to encode the consumer data")
 	}

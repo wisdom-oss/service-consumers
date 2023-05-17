@@ -16,11 +16,11 @@ info:
     the correct scope for accessing this service. The definition of the scope is stored in the scope description file
     as long as there is no manual replacement done. The scope description file is stored in the folder `res` in the root
     of the repository
-  version: '2.0'
+  version: '2.1'
 
 
 servers:
-  - url: https://wisdom-demo.uol.de/api/consumers
+  - url: /api/consumers
     description: The default API endpoint for the WISdoM demo server
 
 components:
@@ -44,22 +44,40 @@ components:
             schema for the GeoJson will not be inserted into the object. If you are interested in the GeoJSON schema,
             the GeoJSON schema for the point geometry is available [here](https://geojson.org/schema/Point.json). A 
             complete schema can be found [here](https://geojson.org/schema/GeoJSON.json)
+        usageType:
+          type: string
+          title: Default consumer usage type
+          description: >
+            The consumers default usage type. This value is used as default value
+            when creating new usage records for the consumer.
+        additionalProperties:
+          type: object
+          title: Additional Properties
+          description: >
+            Additional properties which may be used to store additional information about the consumer. The properties
+            are stored as json object in the database. The key is a string and the value may be any valid JSON value.
     IncomingConsumerData:
       properties:
         name:
           type: string
           title: Consumer Name
           description: The name of the consumer
-        lat:
-          type: number
-          title: Location (Latitude)
+        coordinates:
+          type: array
+          items:
+            type: number
+        usageType:
+          type: string
+          title: Default consumer usage type
           description: >
-            The latitude of the consumers location
-        long:
-          type: number
-          title: Location (Longitude)
+            The consumers default usage type. This value is used as default value
+            when creating new usage records for the consumer.
+        additionalProperties:
+          type: object
+          title: Additional Properties
           description: >
-            The longitude of the consumers location
+            Additional properties which may be used to store additional information about the consumer. The properties
+            are stored as json object in the database. The key is a string and the value may be any valid JSON value.
 paths:
   /:
     get:
@@ -138,7 +156,7 @@ paths:
                 $ref: "#/components/schemas/Consumer"
         409:
           description: |
-            A consumer with the same name and the same location already exists in the database
+            A consumer with the same name or the same location already exists in the database
   /{consumerId}:
     patch:
       tags:
