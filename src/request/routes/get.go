@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"github.com/blockloop/scan/v2"
+	"github.com/lib/pq"
 	requestErrors "microservice/request/error"
 	"microservice/structs"
 	"microservice/vars/globals"
@@ -57,28 +58,28 @@ func GetConsumers(w http.ResponseWriter, r *http.Request) {
 		consumerRows, queryError = globals.Queries.Query(
 			connections.DbConnection,
 			"get-consumers-by-usage-id-area",
-			usageAbove, consumerIDs, areaFilter)
+			usageAbove, pq.Array(consumerIDs), pq.Array(areaFilter))
 		break
 	case usageAboveSet && consumerIdSet && !areaFilterSet:
 		l.Info().Str("filters", "usage,consumerID").Msg("querying database")
 		consumerRows, queryError = globals.Queries.Query(
 			connections.DbConnection,
 			"get-consumers-by-usage-id",
-			usageAbove, consumerIDs)
+			usageAbove, pq.Array(consumerIDs))
 		break
 	case usageAboveSet && !consumerIdSet && areaFilterSet:
 		l.Info().Str("filters", "usage,areaFilter").Msg("querying database")
 		consumerRows, queryError = globals.Queries.Query(
 			connections.DbConnection,
 			"get-consumers-by-usage-area",
-			usageAbove, areaFilter)
+			usageAbove, pq.Array(areaFilter))
 		break
 	case !usageAboveSet && consumerIdSet && areaFilterSet:
 		l.Info().Str("filters", "consumerID,areaFilter").Msg("querying database")
 		consumerRows, queryError = globals.Queries.Query(
 			connections.DbConnection,
 			"get-consumers-by-id-area",
-			consumerIDs, areaFilter)
+			pq.Array(consumerIDs), pq.Array(areaFilter))
 		break
 	case usageAboveSet && !consumerIdSet && !areaFilterSet:
 		l.Info().Str("filters", "usage").Msg("querying database")
@@ -92,14 +93,14 @@ func GetConsumers(w http.ResponseWriter, r *http.Request) {
 		consumerRows, queryError = globals.Queries.Query(
 			connections.DbConnection,
 			"get-consumers-by-area",
-			areaFilter)
+			pq.Array(areaFilter))
 		break
 	case !usageAboveSet && consumerIdSet && !areaFilterSet:
 		l.Info().Str("filters", "consumerID").Msg("querying database")
 		consumerRows, queryError = globals.Queries.Query(
 			connections.DbConnection,
 			"get-consumers-by-id",
-			consumerIDs)
+			pq.Array(consumerIDs))
 		break
 	case !usageAboveSet && !consumerIdSet && !areaFilterSet:
 		l.Warn().Str("filters", "none").Msg("querying database without filters")
