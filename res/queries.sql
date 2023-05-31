@@ -20,7 +20,7 @@ SELECT
 FROM
     consumers.consumers
 WHERE
-    id IN (SELECT consumer FROM water_usage.usages WHERE value > $1)
+    id IN (SELECT consumer FROM water_usage.usages WHERE usages.amount > $1)
 AND
     id = any($2)
 AND
@@ -36,7 +36,7 @@ SELECT
 FROM
     consumers.consumers
 WHERE
-    id IN (SELECT consumer FROM water_usage.usages WHERE value > $1)
+    id IN (SELECT consumer FROM water_usage.usages WHERE usages.amount > $1)
 AND
     id = any($2);
 
@@ -50,7 +50,7 @@ SELECT
 FROM
     consumers.consumers
 WHERE
-    id IN (SELECT consumer FROM water_usage.usages WHERE value > $1)
+    id IN (SELECT consumer FROM water_usage.usages WHERE amount > $1)
 AND
     ST_CONTAINS((SELECT geom FROM geodata.shapes WHERE key = any($2)), location);
 
@@ -114,7 +114,7 @@ SELECT
 FROM
     consumers.consumers
 WHERE
-    id IN (SELECT consumer FROM water_usage.usages WHERE value > $1);
+    id IN (SELECT consumer FROM water_usage.usages WHERE amount > $1);
 
 -- name: get-all-consumers
 SELECT
