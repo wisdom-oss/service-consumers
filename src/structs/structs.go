@@ -16,7 +16,7 @@ type ErrorResponse struct {
 type Consumer struct {
 	UUID                 string                 `json:"id"`
 	Name                 string                 `json:"name"`
-	Location             geoJson.Geometry       `json:"location"`
+	Location             geoJson.Geometry       `json:"geojson"`
 	UsageType            *string                `json:"usageType"`
 	AdditionalProperties map[string]interface{} `json:"additionalProperties"`
 }
