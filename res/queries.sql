@@ -52,7 +52,7 @@ FROM
 WHERE
     id IN (SELECT consumer FROM water_usage.usages WHERE amount > $1)
 AND
-    ST_CONTAINS(ST_Union(ARRAY((SELECT geom FROM geodata.shapes WHERE key = any($2)))), location);
+    ST_CONTAINS(ST_Collect(ARRAY((SELECT geom FROM geodata.shapes WHERE key = any($2)))), location);
 
 -- name: get-consumers-by-id-area
 SELECT
@@ -66,7 +66,7 @@ FROM
 WHERE
     id = any($1)
 AND
-    ST_CONTAINS(ST_Union(ARRAY((SELECT geom FROM geodata.shapes WHERE key = any($2)))), location);
+    ST_CONTAINS(ST_Collect(ARRAY((SELECT geom FROM geodata.shapes WHERE key = any($2)))), location);
 
 -- name: get-consumers-by-id
 SELECT
@@ -102,7 +102,7 @@ SELECT
 FROM
     consumers.consumers
 WHERE
-    st_contains(ST_Union(ARRAY((SELECT geom FROM geodata.shapes WHERE key = any($2)))), location);
+    st_contains(ST_Collect(ARRAY((SELECT geom FROM geodata.shapes WHERE key = any($2)))), location);
 
 -- name: get-consumers-by-usage
 SELECT
