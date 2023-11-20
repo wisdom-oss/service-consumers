@@ -5,7 +5,9 @@ go 1.21.1
 require (
 	github.com/go-chi/chi/v5 v5.0.10
 	github.com/go-chi/httplog v0.3.2
+	github.com/google/uuid v1.4.0
 	github.com/lib/pq v1.10.9
+	github.com/paulmach/go.geojson v1.5.0
 	github.com/qustavo/dotsql v1.1.0
 	github.com/rs/zerolog v1.31.0
 	github.com/wisdom-oss/commonTypes v1.0.0
