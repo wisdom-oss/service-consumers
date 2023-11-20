@@ -1,0 +1,235 @@
+openapi: 3.0.3
+info:
+    title: Consumer Management
+    description: |
+        <div align="center">
+        <p>🏡🏢 management tools for large and small consumers</p>
+        <img src="https://img.shields.io/github/go-mod/go-version/wisdom-oss/service-consumers?style=for-the-badge"
+        alt="Go Lang Version"/>
+        </div>
+
+    version: "3.0"
+servers:
+    -   url: '/api/consumers'
+
+components:
+  schemas:
+    Consumer:
+      title: Consumer
+      description: |
+        A consumer that is <i>returned</i> by the API
+      properties:
+        id:
+          type: string
+          format: uuid
+          pattern: ^[A-Za-z0-9]{8}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{12}$
+        name:
+          type: string
+          description: The name of the consumer
+        description:
+          type: string
+          description: an optional description of the consumer
+          nullable: false
+        address:
+          type: string
+          description: a human readable address for the consumer
+          nullable: false
+        usageType:
+          type: string
+          description: the uuid of the usage type associated to the consumer
+          format: uuid
+          pattern: ^[A-Za-z0-9]{8}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{12}$
+        location:
+          type: object
+          description: the geojson representation of the consumer's location usable in map applications
+          nullable: false
+        additionalProperties:
+          type: object
+          additionalProperties: true
+          nullable: true
+      required:
+        - id
+        - name
+        - location
+
+paths:
+  /:
+    get:
+      summary: Get a (filtered) list of consumers
+      parameters:
+        - in: query
+          name: id
+          description: |
+            A list of consumer IDs that should be returned.
+            <i>Please do not use when requesting a single consumer</i>
+          deprecated: true
+          schema:
+            type: array
+            items:
+              type: string
+              format: uuid
+              pattern: ^[A-Za-z0-9]{8}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{12}$
+        - in: query
+          name: usageAbove
+          description: The minimal usage amount recorded for a consumer
+          schema:
+            type: number
+            format: float64
+            minimum: 0
+        - in: query
+          name: in
+          description: |
+            A list of shape keys in which the consumer needs to be located in
+            to be returned
+          schema:
+            type: array
+            items:
+              type: string
+              maxLength: 12
+              pattern: ^\d{1,12}$
+      responses:
+        200:
+          description: Consumers found
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Consumer'
+        204:
+          description: No Consumers matching the filter(s) found
+
+    post:
+      summary: Create a new consumer
+      requestBody:
+        description: |
+          The consumer creation data that needs to be sent to the API to create
+          a new consumer
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: The name of the consumer
+                description:
+                  type: string
+                  description: an optional description of the consumer
+                  nullable: false
+                address:
+                  type: string
+                  description: a human readable address for the consumer
+                  nullable: false
+                usageType:
+                  type: string
+                  description: the uuid of the usage type associated to the consumer
+                  format: uuid
+                  pattern: ^[A-Za-z0-9]{8}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{12}$
+                location:
+                  type: array
+                  minItems: 2
+                  maxItems: 2
+                  items:
+                    type: number
+                    format: float64
+                  description: | 
+                    the two coordinates representing the location of the
+                    consumer. The first coordinate representing the longitude
+                    the second one representing the latitude
+                  nullable: false
+                additionalProperties:
+                  type: object
+                  additionalProperties: true
+                  nullable: true
+
+      responses:
+        201:
+          description: Consumer created
+        409:
+          description: |
+            A consumer with the at least one matching attribute exists
+
+  /{consumer-id}:
+    get:
+      summary: Get a single consumer
+      responses:
+        200:
+          description: |
+            The requested consumer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Consumer'
+        404:
+          description: Unknown Consumer
+      parameters:
+        - in: path
+          name: consumer-id
+          description: A consumer id
+          required: true
+          schema:
+            type: string
+            format: uuid
+            pattern: ^[A-Za-z0-9]{8}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{12}$
+    patch:
+      summary: update a consumer
+      description: |
+        This call replaces the current representation of the consumer with the
+        one placed in the request body.
+        This is a destructive procedure.
+        The former representation cannot be restored
+      requestBody:
+        description: |
+          The consumer update data that needs to be sent to the API to update
+          the consumer's data
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: The name of the consumer
+                description:
+                  type: string
+                  description: an optional description of the consumer
+                  nullable: false
+                address:
+                  type: string
+                  description: a human readable address for the consumer
+                  nullable: false
+                usageType:
+                  type: string
+                  description: the uuid of the usage type associated to the consumer
+                  format: uuid
+                  pattern: ^[A-Za-z0-9]{8}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{12}$
+                location:
+                  type: array
+                  minItems: 2
+                  maxItems: 2
+                  items:
+                    type: number
+                    format: float64
+                  description: |
+                    the two coordinates representing the location of the
+                    consumer. The first coordinate representing the longitude
+                    the second one representing the latitude
+                  nullable: false
+                additionalProperties:
+                  type: object
+                  additionalProperties: true
+                  nullable: true
+      responses:
+        200:
+          description: Updated the consumer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Consumer'
+
+    delete:
+      summary: Delete the consumer
+      responses:
+        204:
+          description: Consumer deleted
