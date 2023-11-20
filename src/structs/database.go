@@ -2,6 +2,7 @@ package structs
 
 import (
 	geojson "github.com/paulmach/go.geojson"
+
 	"microservice/vars/globals"
 	"microservice/vars/globals/connections"
 )
@@ -27,6 +28,10 @@ type DbConsumer struct {
 	// AdditionalProperties contains an optional key/value map allowing to add
 	// additional properties to a consumer
 	AdditionalProperties pgtype.JSONB `db:"additional_properties"`
+
+	Description string `db:"description"`
+
+	Address string `db:"address"`
 }
 
 // ToConsumer converts a consumer entry stored in the database into an object
@@ -71,6 +76,8 @@ func (c DbConsumer) ToConsumer() (*Consumer, error) {
 		UUID:                 uuid,
 		Name:                 c.Name,
 		Location:             c.Location,
+		Description:          c.Description,
+		Address:              c.Address,
 		UsageType:            usageType,
 		AdditionalProperties: additionalProperties,
 	}, nil

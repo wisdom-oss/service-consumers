@@ -18,6 +18,8 @@ type Consumer struct {
 	Name                 string                 `json:"name"`
 	Location             geoJson.Geometry       `json:"geojson"`
 	UsageType            *string                `json:"usageType"`
+	Description          string                 `json:"description"`
+	Address              string                 `json:"address"`
 	AdditionalProperties map[string]interface{} `json:"additionalProperties"`
 }
 

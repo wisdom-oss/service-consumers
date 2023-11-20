@@ -50,6 +50,12 @@ components:
           description: >
             The consumers default usage type. This value is used as default value
             when creating new usage records for the consumer.
+        description:
+          type: string
+          title: Description
+        address:
+          type: string
+          title: Address
         additionalProperties:
           type: object
           title: Additional Properties
