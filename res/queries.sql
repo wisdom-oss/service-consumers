@@ -16,7 +16,9 @@ SELECT
     name,
     ST_ASGeoJSON(location) AS location,
     usage_type,
-    additional_properties
+    additional_properties,
+    description,
+    address
 FROM
     consumers.consumers
 WHERE
@@ -32,7 +34,9 @@ SELECT
     name,
     ST_ASGeoJSON(location) AS location,
     usage_type,
-    additional_properties
+    additional_properties,
+    description,
+    address
 FROM
     consumers.consumers
 WHERE
@@ -46,7 +50,9 @@ SELECT
     name,
     ST_ASGeoJSON(location) AS location,
     usage_type,
-    additional_properties
+    additional_properties,
+    description,
+    address
 FROM
     consumers.consumers
 WHERE
@@ -60,7 +66,9 @@ SELECT
     name,
     ST_ASGeoJSON(location) AS location,
     usage_type,
-    additional_properties
+    additional_properties,
+    description,
+    address
 FROM
     consumers.consumers
 WHERE
@@ -74,7 +82,9 @@ SELECT
     name,
     ST_ASGeoJSON(location) AS location,
     usage_type,
-    additional_properties
+    additional_properties,
+    description,
+    address
 FROM
     consumers.consumers
 WHERE
@@ -86,7 +96,9 @@ SELECT
     name,
     ST_ASGeoJSON(location) AS location,
     usage_type,
-    additional_properties
+    additional_properties,
+    description,
+    address
 FROM
     consumers.consumers
 WHERE
@@ -98,7 +110,9 @@ SELECT
     name,
     ST_ASGeoJSON(location) AS location,
     usage_type,
-    additional_properties
+    additional_properties,
+    description,
+    address
 FROM
     consumers.consumers
 WHERE
@@ -110,7 +124,9 @@ SELECT
     name,
     ST_ASGeoJSON(location) AS location,
     usage_type,
-    additional_properties
+    additional_properties,
+    description,
+    address
 FROM
     consumers.consumers
 WHERE
@@ -122,7 +138,9 @@ SELECT
     name,
     ST_ASGeoJSON(location) AS location,
     usage_type,
-    additional_properties
+    additional_properties,
+    description,
+    address
 FROM
     consumers.consumers;
 
