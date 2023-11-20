@@ -1,0 +1,8 @@
+[
+  {
+    "code": "TEMPLATE",
+    "title": "Template Error",
+    "description": "This is a template error, if you see this this means the error handling in the template works",
+    "httpCode": 400
+  }
+]
