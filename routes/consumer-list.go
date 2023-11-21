@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/blockloop/scan/v2"
+	"github.com/google/uuid"
 	"github.com/lib/pq"
 	"github.com/rs/zerolog/log"
 	wisdomMiddleware "github.com/wisdom-oss/microservice-middlewares/v3"
@@ -29,7 +31,7 @@ func ConsumerList(w http.ResponseWriter, r *http.Request) {
 	// get the different sql parameters
 	shapeKeys, shapeKeysSet := r.URL.Query()["in"]
 	consumerIDs, consumerIDsSet := r.URL.Query()["id"]
-	minimalUsage, minimalUsageSet := r.URL.Query()["usageAbove"]
+	minimalUsages, minimalUsagesSet := r.URL.Query()["usageAbove"]
 
 	/*
 			The following check is only done to issue a deprecation warning when
@@ -73,6 +75,14 @@ func ConsumerList(w http.ResponseWriter, r *http.Request) {
 
 	if consumerIDsSet {
 		activeFilters++
+		for _, consumerID := range consumerIDs {
+			_, err = uuid.Parse(consumerID)
+			if err != nil {
+				errorHandler <- "INVALID_UUID_IN_FILTER"
+				<-statusChannel
+				return
+			}
+		}
 		filter, err := globals.SqlQueries.Raw("filter-ids")
 		if err != nil {
 			log.Error().Err(err).Msg("unable to load filter sql")
@@ -90,8 +100,15 @@ func ConsumerList(w http.ResponseWriter, r *http.Request) {
 		arguments = append(arguments, pq.Array(consumerIDs))
 	}
 
-	if minimalUsageSet {
+	if minimalUsagesSet {
 		activeFilters++
+		minimalUsageString := minimalUsages[0]
+		minimalUsage, err := strconv.ParseFloat(minimalUsageString, 64)
+		if err != nil {
+			errorHandler <- "USAGE_AMOUNT_NAN"
+			<-statusChannel
+			return
+		}
 		filter, err := globals.SqlQueries.Raw("filter-usage-amount")
 		if err != nil {
 			log.Error().Err(err).Msg("unable to load filter sql")
@@ -106,7 +123,7 @@ func ConsumerList(w http.ResponseWriter, r *http.Request) {
 		} else {
 			sql += fmt.Sprintf(" AND %s", filter)
 		}
-		arguments = append(arguments, minimalUsage[0])
+		arguments = append(arguments, minimalUsage)
 	}
 
 	// now prepare the query
