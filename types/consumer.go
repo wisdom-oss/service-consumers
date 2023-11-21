@@ -33,7 +33,7 @@ type Consumer struct {
 
 	// AdditionalProperties contain additional properties that further apply
 	// to the consumer
-	AdditionalProperties map[string]interface{} `db:"additional_properties" json:"additionalProperties"`
+	AdditionalProperties *Map `db:"additional_properties" json:"additionalProperties"`
 }
 
 // UnmarshalJSON customizes the way this struct is populated when reading
@@ -45,12 +45,12 @@ type Consumer struct {
 func (c *Consumer) UnmarshalJSON(src []byte) error {
 	// this contains the type awaited as the incoming json object
 	type incomingConsumer struct {
-		Name                 string                 `json:"name"`
-		Description          *string                `json:"description"`
-		Address              *string                `json:"address"`
-		Location             []float64              `json:"location"`
-		UsageType            *uuid.UUID             `json:"usageType"`
-		AdditionalProperties map[string]interface{} `json:"additional_properties"`
+		Name                 string     `json:"name"`
+		Description          *string    `json:"description"`
+		Address              *string    `json:"address"`
+		Location             []float64  `json:"location"`
+		UsageType            *uuid.UUID `json:"usageType"`
+		AdditionalProperties *Map       `json:"additional_properties"`
 	}
 
 	var iC incomingConsumer
