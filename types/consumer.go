@@ -76,5 +76,6 @@ func (c *Consumer) UnmarshalJSON(src []byte) error {
 	}
 	geom := geojson.NewPointGeometry(iC.Location)
 	nC.Location = geom
+	*c = nC
 	return nil
 }

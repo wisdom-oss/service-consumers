@@ -10,6 +10,24 @@ SELECT
 FROM
     consumers.consumers;
 
+
+-- name: insert-consumer
+INSERT INTO consumers.consumers(
+       name,
+       description,
+       address,
+       location,
+       usage_type,
+       additional_properties
+) VALUES ($1, $2, $3,  ST_GeomFromGeoJSON($4), $5, $6)
+RETURNING id;
+
+
+
+
+
+-- ========================================================================== --
+
 -- name: filter-ids
 id = any($1);
 

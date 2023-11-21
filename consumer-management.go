@@ -36,6 +36,7 @@ func main() {
 	// now mount the admin router
 	router.Get("/", routes.ConsumerList)
 	router.Get("/{consumer-id}", routes.SingleConsumer)
+	router.Post("/", routes.CreateNewConsumer)
 
 	// now boot up the service
 	// Configure the HTTP server
