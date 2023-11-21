@@ -13,9 +13,8 @@ import (
 	"github.com/rs/zerolog/log"
 	wisdomMiddleware "github.com/wisdom-oss/microservice-middlewares/v3"
 
-	"github.com/wisdom-oss/service-consumers/routes"
-
 	"github.com/wisdom-oss/service-consumers/globals"
+	"github.com/wisdom-oss/service-consumers/routes"
 )
 
 // the main function bootstraps the http server and handlers used for this
@@ -35,9 +34,7 @@ func main() {
 	// now add the authorization middleware to the router
 	router.Use(wisdomMiddleware.Authorization(globals.AuthorizationConfiguration, globals.ServiceName))
 	// now mount the admin router
-	router.HandleFunc("/", routes.BasicHandler)
-	router.HandleFunc("/internal-error", routes.BasicWithInternalErrorHandling)
-	router.HandleFunc("/wisdom-error", routes.BasicWithWISdoMErrorHandling)
+	router.Get("/{consumer-id}", routes.SingleConsumer)
 
 	// now boot up the service
 	// Configure the HTTP server
