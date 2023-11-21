@@ -17,4 +17,4 @@ id = any($1);
 id IN (SELECT consumer FROM water_usages.usages WHRERE usages.amount > $1);
 
 -- name: filter-location
-ST_CONTAINS(ST_UNION(ARRAY((SELECT geom FROM geodata.shapes WHERE key = any($2)))), location);
+ST_CONTAINS(ST_UNION(ARRAY((SELECT geom FROM geodata.shapes WHERE key = any($1)))), location);
