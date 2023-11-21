@@ -3,6 +3,7 @@ package types
 import (
 	"encoding/json"
 	"errors"
+	"slices"
 
 	"github.com/google/uuid"
 )
@@ -74,6 +75,7 @@ func (c *Consumer) UnmarshalJSON(src []byte) error {
 	if len(iC.Location) != 2 {
 		return ErrLocationNotTwoCoordinates
 	}
+	slices.Reverse(iC.Location)
 	geom := geojson.NewPointGeometry(iC.Location)
 	nC.Location = geom
 	*c = nC
