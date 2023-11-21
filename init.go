@@ -9,6 +9,7 @@ import (
 
 	wisdomType "github.com/wisdom-oss/commonTypes"
 
+	"github.com/joho/godotenv"
 	"github.com/qustavo/dotsql"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -32,6 +33,11 @@ var defaultAuth = wisdomType.AuthorizationConfiguration{
 
 // this init functions sets up the logger which is used for this microservice
 func init() {
+	// load the variables found in the .env file into the process environment
+	err := godotenv.Load()
+	if err != nil {
+		log.Debug().Msg("no .env files found")
+	}
 	// set the time format to unix timestamps to allow easier machine handling
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	// allow the logger to create an error stack for the logs
