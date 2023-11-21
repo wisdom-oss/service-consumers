@@ -17,7 +17,8 @@ components:
     Consumer:
       title: Consumer
       description: |
-        A consumer that is <i>returned</i> by the API
+        A consumer that is <i>returned</i> by the API.
+        A missing value is marked with null.
       properties:
         id:
           type: string
@@ -29,11 +30,11 @@ components:
         description:
           type: string
           description: an optional description of the consumer
-          nullable: false
+          nullable: true
         address:
           type: string
           description: a human readable address for the consumer
-          nullable: false
+          nullable: true
         usageType:
           type: string
           description: the uuid of the usage type associated to the consumer
@@ -42,7 +43,7 @@ components:
         location:
           type: object
           description: the geojson representation of the consumer's location usable in map applications
-          nullable: false
+          nullable: true
         additionalProperties:
           type: object
           additionalProperties: true
