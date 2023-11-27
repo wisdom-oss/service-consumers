@@ -1,0 +1,14 @@
+[
+    {
+        "code": "INVALID_UUID_IN_FILTER",
+        "title": "Invalid UUID in filter",
+        "description": "At least one uuid supplied in the filter is not valid",
+        "httpCode": 400
+    },
+    {
+        "code": "USAGE_AMOUNT_NAN",
+        "title": "Usage Amount NaN",
+        "description": "The usage amount supplied in the filter is not a number",
+        "httpCode": 400
+    }
+]

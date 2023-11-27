@@ -1,10 +1,14 @@
-# WISdoM OSS - Consumer Management Service
-<p>
-<img src="https://img.shields.io/github/go-mod/go-version/wisdom-oss/service-consumers?filename=src%2Fgo.mod&style=for-the-badge" alt="Go Lang Version"/>
+<div align="center">
+<img height="150px" src="https://raw.githubusercontent.com/wisdom-oss/brand/main/svg/standalone_color.svg">
+<h1>Consumer Management</h1>
+<h3>consumers</h3>
+<p>🏸 management tools for the large and small consumers</p>
+<img src="https://img.shields.io/github/go-mod/go-version/wisdom-oss/service-consumers?style=for-the-badge"
+alt="Go Lang Version"/>
 <a href="openapi.yaml">
 <img src="https://img.shields.io/badge/Schema%20Version-3.0.0-6BA539?style=for-the-badge&logo=OpenAPI%20Initiative" alt="Open
 API Schema Version"/></a>
-</p>
+</div>
 
 ## Overview
 This microservice is responsible for managing consumers and their associated 
@@ -16,8 +20,7 @@ It uses the microservice template for the WISdoM OSS project.
 The service is included in every WISdoM OSS deployment by default and does not 
 require the user to do anything.
 
-A documentation for the API can be found in the [openapi.yaml](openapi.yaml) file in the 
-repository.
+The documentation for the API can be found in the [openapi.yaml](openapi.yaml) file.
 
 ## Request Flow
 The following diagram shows the request flow of the service.
@@ -52,7 +55,7 @@ sequenceDiagram
 
 ## Development
 ### Prerequisites
-- Go 1.20
+- Go 1.21.2
 
 ### Important notices
 - Since the service is usually deployed behind an API gateway which

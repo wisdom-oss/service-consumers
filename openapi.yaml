@@ -1,220 +1,236 @@
-openapi: 3.0.0
+openapi: 3.0.3
 info:
-  title: WISdoM OSS - Consumer Management Service
-  description: |
-    This microservice allows access to the consumer database. The consumers listed in the database have the following 
-    attributes:
-    - Name
-    - Location
-    - UUID
-    
-    The consumer management service is one of the core services of the WISdoM system and is automatically included with
-    every standard installation.
-    
-    **IMPORTANT NOTICE**  
-    This service requires, that the user accessing it was previously authorized via the authorization service and has
-    the correct scope for accessing this service. The definition of the scope is stored in the scope description file
-    as long as there is no manual replacement done. The scope description file is stored in the folder `res` in the root
-    of the repository
-  version: '2.1'
+    title: Consumer Management
+    description: |
+        <div align="center">
+        <p>🏡🏢 management tools for large and small consumers</p>
+        <img src="https://img.shields.io/github/go-mod/go-version/wisdom-oss/service-consumers?style=for-the-badge"
+        alt="Go Lang Version"/>
+        </div>
 
-
+    version: "3.0"
 servers:
-  - url: /api/consumers
-    description: The default API endpoint for the WISdoM demo server
+    -   url: '/api/consumers'
 
 components:
   schemas:
     Consumer:
+      title: Consumer
+      description: |
+        A consumer that is <i>returned</i> by the API.
+        A missing value is marked with null.
       properties:
         id:
           type: string
-          title: Consumer UUID
-          description: The UUID of the consumer which identifies the consumer in the database and related HTTP requests
-          pattern: ^[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$
+          format: uuid
+          pattern: ^[A-Za-z0-9]{8}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{12}$
         name:
           type: string
-          title: Consumer Name
           description: The name of the consumer
-        location:
-          type: object
-          title: Location
-          description: >
-            The consumers location expressed as GeoJSON (Point Geometry). To keep this file as simple as possible the 
-            schema for the GeoJson will not be inserted into the object. If you are interested in the GeoJSON schema,
-            the GeoJSON schema for the point geometry is available [here](https://geojson.org/schema/Point.json). A 
-            complete schema can be found [here](https://geojson.org/schema/GeoJSON.json)
-        usageType:
-          type: string
-          title: Default consumer usage type
-          description: >
-            The consumers default usage type. This value is used as default value
-            when creating new usage records for the consumer.
         description:
           type: string
-          title: Description
+          description: an optional description of the consumer
+          nullable: true
         address:
           type: string
-          title: Address
-        additionalProperties:
-          type: object
-          title: Additional Properties
-          description: >
-            Additional properties which may be used to store additional information about the consumer. The properties
-            are stored as json object in the database. The key is a string and the value may be any valid JSON value.
-    IncomingConsumerData:
-      properties:
-        name:
-          type: string
-          title: Consumer Name
-          description: The name of the consumer
-        coordinates:
-          type: array
-          items:
-            type: number
+          description: a human readable address for the consumer
+          nullable: true
         usageType:
           type: string
-          title: Default consumer usage type
-          description: >
-            The consumers default usage type. This value is used as default value
-            when creating new usage records for the consumer.
+          description: the uuid of the usage type associated to the consumer
+          format: uuid
+          pattern: ^[A-Za-z0-9]{8}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{12}$
+        location:
+          type: object
+          description: the geojson representation of the consumer's location usable in map applications
+          nullable: true
         additionalProperties:
           type: object
-          title: Additional Properties
-          description: >
-            Additional properties which may be used to store additional information about the consumer. The properties
-            are stored as json object in the database. The key is a string and the value may be any valid JSON value.
+          additionalProperties: true
+          nullable: true
+      required:
+        - id
+        - name
+        - location
+
 paths:
   /:
     get:
-      tags:
-        - Management Operation
-      summary: Get a list of the consumers matching the filter parameters
-      description: >
-        This endpoint allows you to access a list of all consumers listed in the database. To filter your results you
-        may use the `usage_above`, `in` and `id` query parameters which will be documented here.
+      summary: Get a (filtered) list of consumers
       parameters:
-        - in: query
-          name: usage_above
-          description: |
-            The minimal water usage in cubic meters (`m³`) a consumer has ever recorded.
-            
-            _Please note that the query will take much longer since the database needs to check the usage data._
-          schema:
-            type: integer
-        - in: query
-          name: in
-          description: |
-            One or more keys of a municipal or district which limits the search area. If no consumers are within the
-            selected areas, the service will response with an empty response via `NO_CONTENT`
-          schema:
-            type: array
-            items:
-              type: string
-              pattern: ^[01][0-6][0-9]{0,10}$
         - in: query
           name: id
           description: |
-            One or more consumer UUIDs to select them directly to pull the available information about them. If none of
-            the UUIDs match, the service will response with an empty response via `NO_CONTENT`
+            A list of consumer IDs that should be returned.
+            <i>Please do not use when requesting a single consumer</i>
+          deprecated: true
           schema:
             type: array
             items:
               type: string
-              pattern: ^[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$
-
+              format: uuid
+              pattern: ^[A-Za-z0-9]{8}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{12}$
+        - in: query
+          name: usageAbove
+          description: The minimal usage amount recorded for a consumer
+          schema:
+            type: number
+            format: float64
+            minimum: 0
+        - in: query
+          name: in
+          description: |
+            A list of shape keys in which the consumer needs to be located in
+            to be returned
+          schema:
+            type: array
+            items:
+              type: string
+              maxLength: 12
+              pattern: ^\d{1,12}$
       responses:
         200:
-          description: A list of the consumers matching the filters
+          description: Consumers found
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/Consumer"
-
+                  $ref: '#/components/schemas/Consumer'
         204:
-          description: |
-            No consumers match the given filters, or there are no consumers in the database
-    put:
-      tags:
-        - Management Operation
+          description: No Consumers matching the filter(s) found
+
+    post:
       summary: Create a new consumer
-      description: |
-        This endpoint allows you to create a new consumer in the database.
-        
-        **Important Notice**
-        
-        The database is set up with a unique constraint. You may not insert two consumers with the same name in the same
-        location.
       requestBody:
+        description: |
+          The consumer creation data that needs to be sent to the API to create
+          a new consumer
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/IncomingConsumerData"
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: The name of the consumer
+                description:
+                  type: string
+                  description: an optional description of the consumer
+                  nullable: false
+                address:
+                  type: string
+                  description: a human readable address for the consumer
+                  nullable: false
+                usageType:
+                  type: string
+                  description: the uuid of the usage type associated to the consumer
+                  format: uuid
+                  pattern: ^[A-Za-z0-9]{8}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{12}$
+                location:
+                  type: array
+                  minItems: 2
+                  maxItems: 2
+                  items:
+                    type: number
+                    format: float64
+                  description: | 
+                    the two coordinates representing the location of the
+                    consumer. The first coordinate representing the longitude
+                    the second one representing the latitude
+                  nullable: false
+                additionalProperties:
+                  type: object
+                  additionalProperties: true
+                  nullable: true
+
       responses:
         201:
+          description: Consumer created
+        409:
           description: |
-            The consumer was successfully created
+            A consumer with the at least one matching attribute exists
+
+  /{consumer-id}:
+    get:
+      summary: Get a single consumer
+      responses:
+        200:
+          description: |
+            The requested consumer
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Consumer"
-        409:
-          description: |
-            A consumer with the same name or the same location already exists in the database
-  /{consumerId}:
-    patch:
-      tags:
-        - Management Operation
-      summary: Update Consumer Information
-      description: |
-        Update the information which is stored about the consumer.
-        
-        **Important Notice**
-        To exclude a field from the update, you need to set the value to `null`. However it is not possible to update only one
-        coordinate of the location. If you want to update the location, you need to provide both coordinates.
+                $ref: '#/components/schemas/Consumer'
+        404:
+          description: Unknown Consumer
       parameters:
         - in: path
-          name: consumerId
-          description: |
-            The uuid of the consumer that shall be edited
+          name: consumer-id
+          description: A consumer id
+          required: true
           schema:
             type: string
-            pattern: ^[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$
+            format: uuid
+            pattern: ^[A-Za-z0-9]{8}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{12}$
+    patch:
+      summary: update a consumer
+      description: |
+        This call replaces the current representation of the consumer with the
+        one placed in the request body.
+        This is a destructive procedure.
+        The former representation cannot be restored
       requestBody:
+        description: |
+          The consumer update data that needs to be sent to the API to update
+          the consumer's data
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/IncomingConsumerData"
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: The name of the consumer
+                description:
+                  type: string
+                  description: an optional description of the consumer
+                  nullable: false
+                address:
+                  type: string
+                  description: a human readable address for the consumer
+                  nullable: false
+                usageType:
+                  type: string
+                  description: the uuid of the usage type associated to the consumer
+                  format: uuid
+                  pattern: ^[A-Za-z0-9]{8}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{12}$
+                location:
+                  type: array
+                  minItems: 2
+                  maxItems: 2
+                  items:
+                    type: number
+                    format: float64
+                  description: |
+                    the two coordinates representing the location of the
+                    consumer. The first coordinate representing the longitude
+                    the second one representing the latitude
+                  nullable: false
+                additionalProperties:
+                  type: object
+                  additionalProperties: true
+                  nullable: true
       responses:
         200:
           description: Updated the consumer
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Consumer"
-        304:
-          description: The consumer was not updated
+                $ref: '#/components/schemas/Consumer'
+
     delete:
-      tags:
-        - Management Operation
-      summary: Delete a consumer from the database
-      description: |
-        When deleting a consumer from the database, the associated usages are **_not_** removed from the database since
-        the usage data may still be important for forecasts or other services.
-        
-        _If a invalid consumer ID is set in the request the service will still respond with the same response. This 
-        behavior is intended as a protection against brute-forcing a consumer UUID for deletion_
-      parameters:
-        - in: path
-          name: consumerId
-          description: |
-            The UUID of the consumer that shall be deleted
-          schema:
-            type: string
-            pattern: ^[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$
+      summary: Delete the consumer
       responses:
         204:
-          description: |
-            The deletion request was successfully executed.
+          description: Consumer deleted
