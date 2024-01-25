@@ -1,5 +1,0 @@
-{
-  "enableAuth": false,
-  "requireUserID": true,
-  "requiredUserGroup": "template-service"
-}
