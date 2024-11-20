@@ -3,6 +3,9 @@
 
 # allow the gitignore file itself
 !.gitignore
+!.github
+!.github/**
+
 
 # now allow all documenttion files
 !README.md
