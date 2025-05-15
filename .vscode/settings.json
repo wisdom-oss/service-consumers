@@ -1,0 +1,12 @@
+{
+    "files.exclude": {
+        ".hc-socket": true
+    },
+    "gopls": {
+        "ui.semanticTokens": true
+    },
+    "go.testEnvFile": "${workspaceFolder}/.env",
+    "Prettier-SQL.SQLFlavourOverride": "postgresql",
+    "editor.suggest.showWords": false,
+    "go.testTimeout": "300s",
+}

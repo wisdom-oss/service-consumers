@@ -1,0 +1,25 @@
+{
+    "configurations": [
+        {
+            "name": "Debug",
+            "type": "go",
+            "mode": "debug",
+            "request": "launch",
+            "program": "${workspaceFolder}",
+            "envFile": "${workspaceFolder}/.env",
+            "hideSystemGoroutines": true,
+            "internalConsoleOptions": "openOnSessionStart"
+        },
+        {
+            "name": "Debug (Docker Variant)",
+            "type": "go",
+            "mode": "debug",
+            "request": "launch",
+            "program": "${workspaceFolder}",
+            "envFile": "${workspaceFolder}/.env",
+            "hideSystemGoroutines": true,
+            "internalConsoleOptions": "openOnSessionStart",
+            "buildFlags": ["-tags=docker"]
+        }
+    ]
+}

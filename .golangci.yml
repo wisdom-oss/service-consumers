@@ -1,0 +1,54 @@
+linters:
+  enable:
+    - asciicheck
+    - dupl
+    - errname
+    - errorlint
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - gocheckcompilerdirectives
+    - goconst
+    - godox
+    - gosec
+    - sloglint
+    - tagalign
+    - gci
+    - godot
+    - gocritic
+    - loggercheck
+    - mirror
+    - bidichk
+    - dogsled
+    - gofmt
+    - goimports
+    - grouper
+    - intrange
+    - lll
+    - maintidx
+    - mnd
+    - musttag
+    - nosprintfhostport
+    - nilerr
+    - nilnil
+    - perfsprint
+    - predeclared
+    - prealloc
+    - sloglint
+    - unconvert
+    - unparam
+    - copyloopvar
+
+linters-settings:
+  gci:
+    skip-generated: true
+    custom-order: true
+    no-lex-order: false
+    sections:
+      - standard
+      - blank
+      - default
+      - alias
+      - localmodule
